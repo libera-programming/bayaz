@@ -17,7 +17,6 @@
                               (assoc :type message-type
                                      :event event)
                               operation.util/normalize-command)]
-      (println operation)
       (operation.core/process! operation))))
 
 (defn on-whois [^WhoisEvent event]
