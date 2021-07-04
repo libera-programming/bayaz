@@ -1,14 +1,23 @@
 (ns irc.libera.chat.bayaz.core-test
   (:require [clojure.test :as t]
-            [irc.libera.chat.bayaz.core :as core]))
+            [irc.libera.chat.bayaz.state :as state]
+            [irc.libera.chat.bayaz.operation.util :as operation.util]))
 
 (t/deftest message->operation
   (let [operation {:command "quiet"
-                   :args ["jeaye" "being mean" "10m"]}]
+                   :mention? false
+                   :args ["jeaye" "being mean" "10m"]}
+        operation+mention (assoc operation :mention? true)]
     (t/testing "whitespace"
-      (t/is (= operation (core/message->operation "   quiet     jeaye   \"being mean\"     10m  ")))
-      (t/is (= operation (core/message->operation "\tquiet jeaye \"being mean\" 10m"))))
+      (t/is (= operation (-> "   quiet     jeaye   \"being mean\"     10m  "
+                             operation.util/message->operation)))
+      (t/is (= operation (-> "\tquiet jeaye \"being mean\" 10m"
+                             operation.util/message->operation))))
 
     (t/testing "nick prefix"
-      (t/is (= operation (core/message->operation (str (:nick @core/global-config) ": quiet jeaye \"being mean\" 10m"))))
-      (t/is (= operation (core/message->operation (str (:nick @core/global-config) " quiet jeaye \"being mean\" 10m")))))))
+      (t/is (= operation+mention (-> (str (:nick @state/global-config)
+                                          ": quiet jeaye \"being mean\" 10m")
+                                     operation.util/message->operation)))
+      (t/is (= operation+mention (-> (str (:nick @state/global-config)
+                                          " quiet jeaye \"being mean\" 10m")
+                                     operation.util/message->operation))))))

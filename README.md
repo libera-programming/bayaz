@@ -1,11 +1,17 @@
 # Bayaz
 
+> Say one thing for the First of the Magi, say he’s a cheating bastard.
+~ Logen Ninefingers
+
 ## Features
 - Moderation
-  - [ ] Admin registration
-  - [ ] Quiet/unquiet + reason
-  - [ ] Ban/unban + reason
-  - [ ] Kickban + reason
+  - [ ] Admin registration/maintenance
+  - [X] Quiet/unquiet
+    - [ ] Store reason
+  - [X] Ban/unban
+    - [ ] Store reason
+  - [X] Kickban
+    - [ ] Store reason
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
   - [ ] Host/nick stalking
