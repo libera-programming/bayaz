@@ -1,0 +1,25 @@
+language: clojure
+
+sudo: false
+
+os:
+  - linux
+
+cache:
+  - apt
+
+script:
+  - lein uberjar
+  - lein test
+
+after_success:
+- lein cloverage --codecov
+- bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+
+notifications:
+  irc:
+    channels:
+      - "irc.libera.chat##programming-bots"
+    on_success: change
+    on_failure: change
+    use_notice: true

@@ -1,4 +1,4 @@
-# Bayaz
+# Bayaz [![Build Status](https://travis-ci.org/libera-programming/bayaz.svg?branch=master)](https://travis-ci.org/libera-programming/bayaz) [![codecov](https://codecov.io/gh/libera-programming/bayaz/branch/master/graph/badge.svg)](https://codecov.io/gh/libera-programming/bayaz)
 
 <p align=center>
   <img src="https://static.wikia.nocookie.net/firstlaw/images/2/2e/Bayaz-GraphicNovel.jpg/revision/latest?cb=20140307222848"
