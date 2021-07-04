@@ -1,7 +1,7 @@
 (ns irc.libera.chat.bayaz.operation.util
   (:require [clojure.string :as string]
             [irc.libera.chat.bayaz.state :as state])
-  (:import [org.pircbotx PircBotX User]
+  (:import [org.pircbotx PircBotX User UserChannelDao]
            [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent]))
 
 (let [p (:command-prefix @state/global-config)
@@ -45,7 +45,7 @@
       :else
       operation)))
 
-(defn whois! [^User user]
+(defn whois! ^WhoisEvent [^User user]
   (let [nick (.getNick user)
         new-promise (promise)
         pending-snapshot (swap! state/pending-event-requests
@@ -69,8 +69,8 @@
    The first shape is resolved to an account specifier, to cover all clients logged into that
    account, as well as name changes. The second shape is resolved into a hostmask which covers
    all users and nicks from that host. The third is passed through unchanged."
-  [who]
-  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
+  [^String who]
+  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
     (or (when (.containsUser user-channel-dao who)
           (when-some [whois-event (whois! (.getUser user-channel-dao who))]
             (let [account-name (.getRegisteredAs whois-event)]
@@ -92,7 +92,7 @@
 (defn kick!
   "Kicks a user from the primary channel. Note that `who` has to be a nick in order for this
    to work."
-  [who]
+  [^String who]
   (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))]
     (when-some [user (.getUser user-channel-dao who)]

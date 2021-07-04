@@ -36,14 +36,14 @@
   (let [bot-config (-> (Configuration$Builder.)
                        (.setName (:nick @state/global-config))
                        (.setLogin (:nick @state/global-config))
-                       (.addServer (:server @state/global-config))
+                       (.addServer ^String (:server @state/global-config))
                        (.addCapHandler (SASLCapHandler. (:nick @state/global-config)
                                                         (:pass @state/global-config)))
                        (.addAutoJoinChannels (seq (:auto-join @state/global-config)))
                        (.addListener event-listener)
                        .buildConfiguration)]
     (reset! state/bot (PircBotX. bot-config))
-    (future (.startBot @state/bot))))
+    (future (.startBot ^PircBotX @state/bot))))
 
 (defn stop! []
   (try
