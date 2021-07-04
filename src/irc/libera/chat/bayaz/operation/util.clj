@@ -2,7 +2,7 @@
   (:require [clojure.string :as string]
             [irc.libera.chat.bayaz.state :as state])
   (:import [org.pircbotx PircBotX User UserChannelDao]
-           [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent]))
+           [org.pircbotx.hooks.events WhoisEvent]))
 
 (let [p (:command-prefix @state/global-config)
       make-prefixes (fn [command & prefixes]
