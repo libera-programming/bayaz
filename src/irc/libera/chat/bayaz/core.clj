@@ -11,7 +11,7 @@
 (defn admin? [user-login]
   (contains? (:admins @state/global-config) user-login))
 
-(defn on-message [^User user message message-type event]
+(defn process-message! [^User user message message-type event]
   (when (admin? (.getLogin user))
     (when-some [operation (-> (operation.util/message->operation message)
                               (assoc :type message-type
@@ -19,7 +19,7 @@
                               operation.util/normalize-command)]
       (operation.core/process! operation))))
 
-(defn on-whois [^WhoisEvent event]
+(defn process-whois! [^WhoisEvent event]
   ; There's probably an operation waiting for the result of a whois request, so deliver
   ; on that promise, if possible.
   (when-some [pending (get-in @state/pending-event-requests [:whois (.getNick event)])]
@@ -30,11 +30,11 @@
                       ; of live code reloading during dev. Clojure functions can be easily
                       ; redefined, but this proxy class will be immutable inside the bot.
                       (onMessage [^MessageEvent event]
-                        (on-message (.getUser event) (.getMessage event) :public event))
+                        (process-message! (.getUser event) (.getMessage event) :public event))
                       (onPrivateMessage [^PrivateMessageEvent event]
-                        (on-message (.getUser event) (.getMessage event) :private event))
+                        (process-message! (.getUser event) (.getMessage event) :private event))
                       (onWhois [^WhoisEvent event]
-                        (on-whois event))))
+                        (process-whois! event))))
 
 (defn start! []
   (let [bot-config (-> (Configuration$Builder.)
