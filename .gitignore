@@ -1,0 +1,15 @@
+/target
+/classes
+/checkouts
+/resources/config.edn
+profiles.clj
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/.lein-*
+/.nrepl-port
+/.prepl-port
+.hgignore
+.hg/
+.lsp/
