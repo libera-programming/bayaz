@@ -8,6 +8,10 @@
       make-prefixes (fn [command & prefixes]
                       (-> (map #(str p %) prefixes)
                           (zipmap (repeat command))))]
+  ; Each command has a full form and a "prefixed" form. For example, the full
+  ; `quiet` form may have a `!q` and `!quiet` prefixed form. Prefixed forms can be used
+  ; in public channels without a bot mention, since they're meant to be distinct. Full
+  ; forms can also be used, but only with a mention or via DM.
   (def prefixed-command->command (merge (make-prefixes "quiet" "q" "quiet")
                                         (make-prefixes "unquiet" "uq" "unquiet")
                                         (make-prefixes "ban" "b" "ban")
@@ -32,7 +36,11 @@
      :mention? contains-prefix?
      :args (into [] args)}))
 
-(defn normalize-command [operation]
+(defn normalize-command
+  "Determines if the operation contains a properly prefixed command and resolves the prefix, if
+   necessary. Returns nil if the operation isn't correctly prefixed. Otherwise returns the
+   operation with the command normalized to the full form."
+  [operation]
   (let [prefixed? (string/starts-with? (:command operation) (:command-prefix @state/global-config))
         prefix-required? (and (= :public (:type operation)) (-> operation :mention? not))]
     (cond
@@ -45,7 +53,10 @@
       :else
       operation)))
 
-(defn whois! ^WhoisEvent [^User user]
+(defn whois!
+  "Fetches a WhoisEvent for the specified user. This requires blocking on a promise until the
+   response to the whois request is returned. Returns nil if this fails due to a timeout."
+  ^WhoisEvent [^User user]
   (let [nick (.getNick user)
         new-promise (promise)
         pending-snapshot (swap! state/pending-event-requests

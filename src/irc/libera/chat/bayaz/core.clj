@@ -20,10 +20,15 @@
       (operation.core/process! operation))))
 
 (defn on-whois [^WhoisEvent event]
+  ; There's probably an operation waiting for the result of a whois request, so deliver
+  ; on that promise, if possible.
   (when-some [pending (get-in @state/pending-event-requests [:whois (.getNick event)])]
     (deliver pending event)))
 
 (def event-listener (proxy [ListenerAdapter] []
+                      ; Each of these calls out to a standalone function for the primary purpose
+                      ; of live code reloading during dev. Clojure functions can be easily
+                      ; redefined, but this proxy class will be immutable inside the bot.
                       (onMessage [^MessageEvent event]
                         (on-message (.getUser event) (.getMessage event) :public event))
                       (onPrivateMessage [^PrivateMessageEvent event]
@@ -51,8 +56,9 @@
       (.quitServer (.sendIRC bot) (:quit-message @state/global-config))
       (.close bot))
     (catch Exception _
-      ))
-  (reset! state/bot nil))
+      )
+    (finally
+      (reset! state/bot nil))))
 
 (defn restart! []
   (stop!)
