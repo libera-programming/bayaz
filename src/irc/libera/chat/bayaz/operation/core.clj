@@ -13,7 +13,8 @@
 
 (defmethod process! "unquiet"
   [op]
-  (let [[who] (:args op)]
+  (let [; TODO: Validate
+        [who] (:args op)]
     (operation.util/set-user-mode! who "-q")))
 
 (defmethod process! "ban"
@@ -24,7 +25,8 @@
 
 (defmethod process! "unban"
   [op]
-  (let [[who] (:args op)]
+  (let [; TODO: Validate
+        [who] (:args op)]
     (operation.util/set-user-mode! who "-b")))
 
 (defmethod process! "kickban"
