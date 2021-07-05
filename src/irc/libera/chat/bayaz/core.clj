@@ -12,6 +12,7 @@
   (contains? (:admins @state/global-config) user-login))
 
 (defn process-message! [^User user message message-type event]
+  ; TODO: Use the account name here.
   (when (admin? (.getLogin user))
     (when-some [operation (-> (operation.util/message->operation message)
                               (assoc :type message-type
