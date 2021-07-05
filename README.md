@@ -1,4 +1,4 @@
-# Bayaz [![Build Status](https://circleci.com/gh/libera-programming/bayaz.svg?style=svg)](https://circleci.com/gh/libera-programming/bayaz) [![codecov](https://codecov.io/gh/libera-programming/bayaz/branch/master/graph/badge.svg)](https://codecov.io/gh/libera-programming/bayaz)
+# Bayaz [![Build Status](https://circleci.com/gh/libera-programming/bayaz.svg?style=svg)](https://circleci.com/gh/libera-programming/bayaz) [![codecov](https://codecov.io/gh/libera-programming/bayaz/branch/main/graph/badge.svg?token=QM2ZYNW4KX)](https://codecov.io/gh/libera-programming/bayaz)
 
 <p align=center>
   <img src="https://static.wikia.nocookie.net/firstlaw/images/2/2e/Bayaz-GraphicNovel.jpg/revision/latest?cb=20140307222848"
