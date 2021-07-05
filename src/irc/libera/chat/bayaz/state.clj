@@ -9,13 +9,14 @@
 ; been read.
 (defonce pending-event-requests (atom {:whois {}}))
 
-(defn read-config [file-name]
+(defn read-config [resource]
   (try
-    (-> (io/resource file-name)
+    (-> resource
         slurp
         edn/read-string)
     (catch Exception _
       {})))
 
 ; TODO: Validate and merge with default config.
-(def global-config (delay (merge (read-config "base-config.edn") (read-config "config.edn"))))
+(def global-config (delay (merge (read-config (io/resource "base-config.edn"))
+                                 (read-config "config.edn"))))
