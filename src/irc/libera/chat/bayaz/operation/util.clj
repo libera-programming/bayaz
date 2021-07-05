@@ -4,19 +4,19 @@
   (:import [org.pircbotx PircBotX User UserChannelDao]
            [org.pircbotx.hooks.events WhoisEvent]))
 
-(let [p (:command-prefix @state/global-config)
-      make-prefixes (fn [command & prefixes]
-                      (-> (map #(str p %) prefixes)
+(let [make-prefixes (fn [command & prefixes]
+                      (-> (map #(str (:command-prefix @state/global-config) %)
+                               (cons command prefixes))
                           (zipmap (repeat command))))]
   ; Each command has a full form and a "prefixed" form. For example, the full
   ; `quiet` form may have a `!q` and `!quiet` prefixed form. Prefixed forms can be used
   ; in public channels without a bot mention, since they're meant to be distinct. Full
   ; forms can also be used, but only with a mention or via DM.
-  (def prefixed-command->command (merge (make-prefixes "quiet" "q" "quiet")
-                                        (make-prefixes "unquiet" "uq" "unquiet")
-                                        (make-prefixes "ban" "b" "ban")
-                                        (make-prefixes "unban" "ub" "unban")
-                                        (make-prefixes "kickban" "kb" "kickban"))))
+  (def prefixed-command->command (delay (merge (make-prefixes "quiet" "q" "quiet")
+                                               (make-prefixes "unquiet" "uq" "unquiet")
+                                               (make-prefixes "ban" "b" "ban")
+                                               (make-prefixes "unban" "ub" "unban")
+                                               (make-prefixes "kickban" "kb" "kickban")))))
 
 (defn message->operation [message]
   ; TODO: Strip color codes.
@@ -48,7 +48,7 @@
       nil
 
       prefixed?
-      (update operation :command prefixed-command->command)
+      (update operation :command @prefixed-command->command)
 
       :else
       operation)))
