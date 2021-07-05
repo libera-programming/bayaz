@@ -42,9 +42,7 @@ jobs:
 
       - run: lein test
 
-      - run:
-        name: Coverage
-        command: |
+      - run: |
           lein cloverage --codecov
           bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
 
