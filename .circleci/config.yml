@@ -4,18 +4,6 @@
 #
 version: 2.1
 
-checkout_with_cache: &checkout_with_cache
-  - checkout
-  - restore_cache:
-      keys:
-        - v1-dependencies-{{ checksum "project.clj" }}
-        - v1-dependencies-
-  - run: lein deps
-  - save_cache:
-      paths:
-        - ~/.m2
-      key: v1-dependencies-{{ checksum "project.clj" }}
-
 jobs:
   build:
     docker:
@@ -25,7 +13,16 @@ jobs:
       LEIN_ROOT: "true"
 
     steps:
-      <<: *checkout_with_cache
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "project.clj" }}
+            - v1-dependencies-
+      - run: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "project.clj" }}
       - run: lein uberjar
       - run: lein test
       - run: |
@@ -39,7 +36,16 @@ jobs:
       LEIN_ROOT: "true"
 
     steps:
-      <<: *checkout_with_cache
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "project.clj" }}
+            - v1-dependencies-
+      - run: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "project.clj" }}
       - run: lein uberjar
       - run: |
           scp target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
