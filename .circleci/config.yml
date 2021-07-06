@@ -25,7 +25,7 @@ jobs:
       LEIN_ROOT: "true"
 
     steps:
-      <<: *install_depencies
+      <<: *checkout_with_cache
       - run: lein uberjar
       - run: lein test
       - run: |
@@ -39,7 +39,7 @@ jobs:
       LEIN_ROOT: "true"
 
     steps:
-      <<: *install_depencies
+      <<: *checkout_with_cache
       - run: lein uberjar
       - run: |
           scp target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
