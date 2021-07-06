@@ -54,14 +54,14 @@ jobs:
 workflows:
   build:
     jobs:
-      - build
+      - build:
         filters:
           branches:
             ignore:
               - prod
   deploy:
     jobs:
-      - deploy
+      - deploy:
         filters:
           branches:
             only:
