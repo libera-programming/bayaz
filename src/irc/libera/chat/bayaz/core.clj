@@ -40,6 +40,7 @@
 (defn start! []
   (let [bot-config (-> (Configuration$Builder.)
                        (.setName (:nick @state/global-config))
+                       (.setRealName (:real-name @state/global-config))
                        (.setLogin (:nick @state/global-config))
                        (.addServer ^String (:server @state/global-config))
                        (.addCapHandler (SASLCapHandler. (:nick @state/global-config)
