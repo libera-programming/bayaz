@@ -1,6 +1,7 @@
 (ns irc.libera.chat.bayaz.core
   (:gen-class)
-  (:require [irc.libera.chat.bayaz.state :as state]
+  (:require [clojure.string :as string]
+            [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.operation.core :as operation.core]
             [irc.libera.chat.bayaz.operation.util :as operation.util])
   (:import [org.pircbotx PircBotX Configuration$Builder User]
@@ -9,16 +10,20 @@
            [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent]))
 
 (defn admin? [user-login]
-  (contains? (:admins @state/global-config) user-login))
+  (contains? (:admins @state/global-config) (string/lower-case user-login)))
 
 (defn process-message! [^User user message message-type event]
-  ; TODO: Use the account name here.
-  (when (admin? (.getLogin user))
-    (when-some [operation (-> (operation.util/message->operation message)
-                              (assoc :type message-type
-                                     :event event)
-                              operation.util/normalize-command)]
-      (operation.core/process! operation))))
+  ; We first check the login name, which needs to match. Then we do the expensive whois
+  ; to be absolutely certain. We remove the ~ prefix from the login to match that account name.
+  (when (admin? (subs (.getLogin user) 1))
+    (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
+      (when-some [whois-event (operation.util/whois! (.getUser user-channel-dao (.getNick user)))]
+        (when (admin? (.getRegisteredAs whois-event))
+          (when-some [operation (-> (operation.util/message->operation message)
+                                    (assoc :type message-type
+                                           :event event)
+                                    operation.util/normalize-command)]
+            (operation.core/process! operation)))))))
 
 (defn process-whois! [^WhoisEvent event]
   ; There's probably an operation waiting for the result of a whois request, so deliver
