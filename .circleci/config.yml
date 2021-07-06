@@ -32,6 +32,9 @@ jobs:
       LEIN_ROOT: "true"
 
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "c2:6b:15:e5:de:8e:13:7a:f8:b1:87:02:2d:94:a3:f9"
       - checkout
       - restore_cache:
           keys:
