@@ -1,7 +1,3 @@
-# Clojure CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-clojure/ for more details
-#
 version: 2.1
 
 jobs:
@@ -49,20 +45,20 @@ jobs:
       - run: lein uberjar
       - run: |
           scp target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
-          ssh bayaz@pastespace.org -c "./deploy-changes bayaz-$CIRCLE_SHA1.jar"
+          ssh bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1.jar"
 
 workflows:
   build:
+    unless:
+      matches:
+        pattern: "^prod$"
+        value: << pipeline.git.branch >>
     jobs:
-      - build:
-        filters:
-          branches:
-            ignore:
-              - prod
+      - build
   deploy:
+    when:
+      matches:
+        pattern: "^prod$"
+        value: << pipeline.git.branch >>
     jobs:
-      - deploy:
-        filters:
-          branches:
-            only:
-              - prod
+      - deploy
