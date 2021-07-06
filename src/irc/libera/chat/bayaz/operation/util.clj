@@ -1,5 +1,6 @@
 (ns irc.libera.chat.bayaz.operation.util
   (:require [clojure.string :as string]
+            [clojure.core.memoize :as memo]
             [irc.libera.chat.bayaz.state :as state])
   (:import [org.pircbotx PircBotX User UserChannelDao]
            [org.pircbotx.hooks.events WhoisEvent]))
@@ -53,7 +54,7 @@
       :else
       operation)))
 
-(defn whois!
+(defn whois!*
   "Fetches a WhoisEvent for the specified user. This requires blocking on a promise until the
    response to the whois request is returned. Returns nil if this fails due to a timeout."
   ^WhoisEvent [^User user]
@@ -69,6 +70,8 @@
     (when new-request?
       (-> user .send .whoisDetail))
     (deref pending-whois 5000 nil)))
+; Whois requests are rate limited, so we need a short cache for these.
+(def whois! (memo/ttl whois!* {} :ttl/threshold 30))
 
 (defn resolve-account!
   "Resolves an identifier to the most useful incarnation. These identifiers take three shapes:
