@@ -14,10 +14,11 @@
   ; in public channels without a bot mention, since they're meant to be distinct. Full
   ; forms can also be used, but only with a mention or via DM.
   (def prefixed-command->command (delay (merge (make-prefixes "quiet" "q")
-                                               (make-prefixes "unquiet" "uq")
+                                               (make-prefixes "unquiet" "unq" "uq")
                                                (make-prefixes "ban" "b")
-                                               (make-prefixes "unban" "ub")
-                                               (make-prefixes "kickban" "kb")))))
+                                               (make-prefixes "unban" "unb" "ub")
+                                               (make-prefixes "kickban" "kb")
+                                               (make-prefixes "kick" "k")))))
 
 (defn message->operation [message]
   ; TODO: Strip color codes.

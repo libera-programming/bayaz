@@ -35,3 +35,9 @@
         [who why until] (:args op)]
     (process! (assoc op :command "ban"))
     (operation.util/kick! who)))
+
+(defmethod process! "kick"
+  [op]
+  (let [; TODO: Validate this input.
+        [who why until] (:args op)]
+    (operation.util/kick! who)))
