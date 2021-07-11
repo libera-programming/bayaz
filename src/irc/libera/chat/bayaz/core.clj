@@ -18,9 +18,7 @@
   ; to be absolutely certain. We remove the ~ prefix from the login to match that account name.
   (when (admin? (subs (.getLogin user) 1))
     (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
-      (when-some [^WhoisEvent whois-event (->> (.getNick user)
-                                               (.getUser user-channel-dao)
-                                               operation.util/whois!)]
+      (when-some [^WhoisEvent whois-event (operation.util/whois! user)]
         (when (admin? (.getRegisteredAs whois-event))
           (when-some [operation (-> (operation.util/message->operation message)
                                     (assoc :type message-type

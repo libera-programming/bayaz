@@ -72,7 +72,7 @@
         pending-whois (get-in pending-snapshot [:whois nick])
         new-request? (identical? new-promise pending-whois)]
     (when new-request?
-      (-> user .send .whoisDetail))
+      (-> user .send .whois))
     (deref pending-whois 5000 nil)))
 ; Whois requests are rate limited, so we need a short cache for these.
 (def whois! (memo/ttl whois!* {} :ttl/threshold 30))
@@ -92,9 +92,16 @@
     (or (when (.containsUser user-channel-dao who)
           (when-some [whois-event (whois! (.getUser user-channel-dao who))]
             (let [account-name (.getRegisteredAs whois-event)]
-              (if-not (empty? account-name)
+              (cond
+                (seq account-name)
                 (str "$a:" account-name)
-                (str "*!*@" (.getHostname whois-event))))))
+
+                ; A failed whois may have an empty hostname, which would create a *!*@* hostmask.
+                (some? (.getHostname whois-event))
+                (str "*!*@" (.getHostname whois-event))
+
+                :else
+                nil))))
         who)))
 
 (defn action! [& args]
