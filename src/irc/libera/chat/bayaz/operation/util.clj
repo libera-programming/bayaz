@@ -15,6 +15,7 @@
   ; forms can also be used, but only with a mention or via DM.
   (def prefixed-command->command (delay (merge (make-prefixes "help" "h")
                                                (make-prefixes "admins")
+                                               (make-prefixes "warn" "w")
                                                (make-prefixes "quiet" "q")
                                                (make-prefixes "unquiet" "unq" "uq")
                                                (make-prefixes "ban" "b")
@@ -95,6 +96,13 @@
                 (str "$a:" account-name)
                 (str "*!*@" (.getHostname whois-event))))))
         who)))
+
+(defn action! [& args]
+  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
+        action (string/join " " args)]
+    (-> (.send channel)
+        (.action action))))
 
 (defn set-user-mode!
   "Sets the mode for the specified user in the primary channel. `who` can be any valid user

@@ -21,7 +21,7 @@
     - [ ] Store reason
   - [X] Kick
     - [ ] Store reason
-  - [ ] Peer (warning)
+  - [X] Warn
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
   - [ ] Nick/host status lookup (ban/quiet)

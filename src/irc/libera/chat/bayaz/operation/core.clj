@@ -11,22 +11,25 @@
                             :description "Show this help output."}
                     "admins" {:order 1
                               :description "Show the current list of admins."}
-                    "quiet" {:order 2
+                    "warn" {:order 2
+                            :description "Shows a public warning to the nick, with an optional message."
+                            :syntax "warn <nick> [message]"}
+                    "quiet" {:order 3
                              :description "Set mode +q on the target."
                              :syntax "quiet <target>"}
-                    "unquiet" {:order 3
+                    "unquiet" {:order 4
                                :description "Set mode -q on the target."
                                :syntax "unquiet <target>"}
-                    "ban" {:order 4
+                    "ban" {:order 5
                            :description "Set mode +b on the target."
                            :syntax "ban <target>"}
-                    "unban" {:order 5
+                    "unban" {:order 6
                              :description "Set mode -b on the target."
                              :syntax "unban <target>"}
-                    "kick" {:order 6
+                    "kick" {:order 7
                             :description "Removes the nick from the channel."
                             :syntax "kick <nick>"}
-                    "kickban" {:order 7
+                    "kickban" {:order 8
                                :description "Removes the nick from the channel and then sets mode +b."
                                :syntax "kickban <nick>"}})
 
@@ -66,6 +69,12 @@
   [op]
   (.respondWith (:event op)
                 (str "Current admins are: " (string/join ", " (:admins @state/global-config)))))
+
+(defmethod process! "warn"
+  [op]
+  (operation.util/action! (str "warns " (-> op :args first)
+                               (when-not (empty? (-> op :args rest))
+                                 (str ": " (string/join " " (-> op :args rest)))))))
 
 (defmethod process! "quiet"
   [op]
