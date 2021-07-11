@@ -6,4 +6,4 @@
  :quit-message "Power makes all things right. That is my first law, and my last. That is the only law that I acknowledge."
  :primary-channel "##programming"
  :auto-join ["##programming" "##programming-ops"]
- :admins #{"jeaye" "inphase" "arahael" "W" "mrig" "vdamewood" "pulse"}}
+ :admins #{"jeaye" "inphase" "arahael" "mrig" "vdamewood" "pulse" "deniska" "pyzozord"}}

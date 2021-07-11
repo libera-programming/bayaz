@@ -6,6 +6,7 @@
             [irc.libera.chat.bayaz.operation.util :as operation.util])
   (:import [org.pircbotx PircBotX Configuration$Builder User]
            [org.pircbotx.cap SASLCapHandler]
+           [org.pircbotx.delay StaticDelay]
            [org.pircbotx.hooks ListenerAdapter]
            [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent]))
 
@@ -17,7 +18,9 @@
   ; to be absolutely certain. We remove the ~ prefix from the login to match that account name.
   (when (admin? (subs (.getLogin user) 1))
     (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
-      (when-some [whois-event (operation.util/whois! (.getUser user-channel-dao (.getNick user)))]
+      (when-some [^WhoisEvent whois-event (->> (.getNick user)
+                                               (.getUser user-channel-dao)
+                                               operation.util/whois!)]
         (when (admin? (.getRegisteredAs whois-event))
           (when-some [operation (-> (operation.util/message->operation message)
                                     (assoc :type message-type
@@ -48,6 +51,7 @@
                        (.setRealName (:real-name @state/global-config))
                        (.setLogin (:nick @state/global-config))
                        (.addServer ^String (:server @state/global-config))
+                       (.setMessageDelay (StaticDelay. 0))
                        (.addCapHandler (SASLCapHandler. (:nick @state/global-config)
                                                         (:pass @state/global-config)))
                        (.addAutoJoinChannels (seq (:auto-join @state/global-config)))

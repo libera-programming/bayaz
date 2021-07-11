@@ -11,12 +11,17 @@
 ## Features
 - [ ] Moderation
   - [ ] Admin registration/maintenance
+  - [X] Help output
+  - [X] Admins list output
   - [X] Quiet/unquiet
     - [ ] Store reason
   - [X] Ban/unban
     - [ ] Store reason
   - [X] Kickban
     - [ ] Store reason
+  - [X] Kick
+    - [ ] Store reason
+  - [ ] Peer (warning)
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
   - [ ] Nick/host status lookup (ban/quiet)
@@ -33,6 +38,7 @@
 - [ ] URL lookup
   - [ ] Title lookup
   - [ ] Domain resolution
+  - [ ] Content type
   - [ ] Youtube (Title, duration)
   - [ ] Github (Short name, description, lang, stars, followers)
   - [ ] Twitter (Tweet, retweets, likes)
