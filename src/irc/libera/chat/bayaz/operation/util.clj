@@ -21,7 +21,10 @@
                                                (make-prefixes "ban" "b")
                                                (make-prefixes "unban" "unb" "ub")
                                                (make-prefixes "kickban" "kb")
-                                               (make-prefixes "kick" "k")))))
+                                               (make-prefixes "kick" "k")
+
+                                               ; Public
+                                               (make-prefixes "ops")))))
 
 (defn message->operation [message]
   ; TODO: Strip color codes.
@@ -93,7 +96,7 @@
           (when-some [whois-event (whois! (.getUser user-channel-dao who))]
             (let [account-name (.getRegisteredAs whois-event)]
               (cond
-                (seq account-name)
+                (not (empty? account-name))
                 (str "$a:" account-name)
 
                 ; A failed whois may have an empty hostname, which would create a *!*@* hostmask.

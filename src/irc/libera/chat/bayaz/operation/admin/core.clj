@@ -1,4 +1,4 @@
-(ns irc.libera.chat.bayaz.operation.core
+(ns irc.libera.chat.bayaz.operation.admin.core
   (:require [clojure.string :as string]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.operation.util :as operation.util]))
@@ -9,8 +9,6 @@
 
 (def command->help {"help" {:order 0
                             :description "Show this help output."}
-                    "admins" {:order 1
-                              :description "Show the current list of admins."}
                     "warn" {:order 2
                             :description "Shows a public warning to the nick, with an optional message."
                             :syntax "warn <nick> [message]"}
@@ -65,11 +63,6 @@
     (doseq [line lines]
       (.respondWith (:event op) line))))
 
-(defmethod process! "admins"
-  [op]
-  (.respondWith (:event op)
-                (str "Current admins are: " (string/join ", " (:admins @state/global-config)))))
-
 (defmethod process! "warn"
   [op]
   (operation.util/action! (str "warns " (-> op :args first)
@@ -112,3 +105,7 @@
   (let [; TODO: Validate this input.
         [who why until] (:args op)]
     (operation.util/kick! who)))
+
+(defmethod process! :default
+  [op]
+  :not-handled)
