@@ -23,6 +23,7 @@
                                                (make-prefixes "kickban" "kb")
                                                (make-prefixes "kick" "k")
 
+                                               ; TODO: Differentiate between admin/public commands.
                                                ; Public
                                                (make-prefixes "ops"))))
   (def commands (delay (into #{} (vals @prefixed-command->command)))))
