@@ -28,7 +28,7 @@
   - [ ] Host/nick stalking
     - [ ] Query common hosts and nicks by pattern
   - [ ] +m mode (channel gets +m, ops get +o, everyone gets +v; we can then manually -v people)
-  - [ ] `!ops` command to ping all admins
+  - [X] `!ops` command to ping all admins
   - [ ] Spam detection
     - [ ] Automatic quiet after X messages in Y seconds
     - [ ] Automatic quiet after pinging more than N nicks in one message
