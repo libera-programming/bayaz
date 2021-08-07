@@ -24,7 +24,8 @@
                                                (make-prefixes "kick" "k")
 
                                                ; Public
-                                               (make-prefixes "ops")))))
+                                               (make-prefixes "ops"))))
+  (def commands (delay (into #{} (vals @prefixed-command->command)))))
 
 (defn message->operation [message]
   ; TODO: Strip color codes.
@@ -35,25 +36,30 @@
         message (string/replace-first message nick-prefix "")
         ; Tokenize the message, but support quotes to delimit composite tokens.
         ; https://regex101.com/r/GUHh5H/1
-        [command & args] (->> (re-seq #"([^\r\n\t\f\v \"]+)|\"(.+?)\"" message)
-                              ; We want the last non-nil group.
-                              (map #(->> (reverse %)
-                                         (drop-while nil?)
-                                         first)))]
-    {:command command
+        [command & args :as parts] (->> (re-seq #"([^\r\n\t\f\v \"]+)|\"(.+?)\"" message)
+                                        ; We want the last non-nil group.
+                                        (map #(->> (reverse %)
+                                                   (drop-while nil?)
+                                                   first)))]
+    {:parts (into [] parts)
+     :command command
      :mention? contains-prefix?
      :args (into [] args)}))
 
 (defn normalize-command
   "Determines if the operation contains a properly prefixed command and resolves the prefix, if
-   necessary. Returns nil if the operation isn't correctly prefixed. Otherwise returns the
-   operation with the command normalized to the full form."
+   necessary. Updates :command to be nil if the operation isn't correctly
+   prefixed. Otherwise returns the operation with the command normalized to the
+   full form."
   [operation]
   (let [prefixed? (string/starts-with? (:command operation) (:command-prefix @state/global-config))
-        prefix-required? (and (= :public (:type operation)) (-> operation :mention? not))]
+        prefix-required? (and (= :public (:type operation)) (-> operation :mention? not))
+        valid-command? (if prefixed?
+                         (contains? @prefixed-command->command (:command operation))
+                         (contains? @commands (:command operation)))]
     (cond
-      (and prefix-required? (not prefixed?))
-      nil
+      (or (not valid-command?) (and prefix-required? (not prefixed?)))
+      (assoc operation :command nil)
 
       prefixed?
       (update operation :command @prefixed-command->command)
@@ -78,7 +84,7 @@
       (-> user .send .whois))
     (deref pending-whois 5000 nil)))
 ; Whois requests are rate limited, so we need a short cache for these.
-(def whois! (memo/ttl whois!* {} :ttl/threshold 30))
+(def whois! (memo/ttl whois!* {} :ttl/threshold (* 30 1000))) ; ms
 
 (defn resolve-account!
   "Resolves an identifier to the most useful incarnation. These identifiers take three shapes:

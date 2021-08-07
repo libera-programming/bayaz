@@ -9,7 +9,7 @@
 > Bayaz looks maybe sixty, heavily built, with green eyes, a strong face, deeply lined, and a close-cropped grey beard around his mouth. He is entirely bald, with a tanned pate. He's neither handsome nor majestic, but there's something stern and wise about him. An assurance, an air of command. A man used to giving orders, and to being obeyed.
 
 ## Features
-- [ ] Moderation
+- [X] Moderation
   - [ ] Admin registration/maintenance
   - [X] Help output
   - [X] Admins list output
@@ -35,13 +35,20 @@
     - [ ] Automatic quiet after using certain words
     - [ ] Automatic ignore after receiving X DMs in Y seconds
   - [ ] Channel logging
-- [ ] URL lookup
-  - [ ] Title lookup
-  - [ ] Domain resolution
-  - [ ] Content type
+- [X] URL lookup
+  - [X] Title lookup
+  - [X] Domain resolution
+  - [X] Content type
+  - [X] Content length (human readable)
   - [ ] Youtube (Title, duration)
   - [ ] Github (Short name, description, lang, stars, followers)
   - [ ] Twitter (Tweet, retweets, likes)
-- [ ] Protection
+  - [X] Protections
+    - [X] Socket timeout
+    - [X] Download timeout
+    - [X] Max streaming download size
+    - [X] Max redirect amount
+    - [X] Graceful parsing of partial and invalid HTML
+    - [X] Limit output to fixed amount
+- [X] Protections
   - [ ] Ignore messages from self
-  - [ ] Limit all output to fixed amount

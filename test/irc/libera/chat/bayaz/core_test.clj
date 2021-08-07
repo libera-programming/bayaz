@@ -3,9 +3,11 @@
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.operation.util :as operation.util]))
 
+; TODO: Test public messages (nil command)
 (t/deftest message->operation
   (let [operation {:command "quiet"
                    :mention? false
+                   :parts ["quiet" "jeaye" "being mean" "10m"]
                    :args ["jeaye" "being mean" "10m"]}
         operation+mention (assoc operation :mention? true)]
     (t/testing "whitespace"

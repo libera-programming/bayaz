@@ -10,8 +10,8 @@
            [org.pircbotx.cap SASLCapHandler]
            [org.pircbotx.delay StaticDelay]
            [org.pircbotx.hooks ListenerAdapter]
-           [org.pircbotx.hooks.events TopicEvent MessageEvent PrivateMessageEvent WhoisEvent
-            BanListEvent QuietListEvent ServerResponseEvent]))
+           [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent
+            BanListEvent QuietListEvent]))
 
 (defn admin? [user-login]
   (contains? (:admins @state/global-config) (string/lower-case user-login)))
@@ -28,21 +28,27 @@
   (when (and (= (:primary-channel @state/global-config) (.getName (.getChannel event)))
              (.isComplete event))
     (let [channel (.getChannel event)]
-    ;(let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-    ;      channel (.getChannel user-channel-dao (:primary-channel @state/global-config))]
       ; Request the quiet and ban lists.
       (.setMode (.send channel) "q")
       (.setMode (.send channel) "b"))))
 
 (defn process-message! [^User user message message-type event]
+  ; TODO: Check if from self.
   (let [from-admin? (admin?! user)
         operation (-> (operation.util/message->operation message)
                       (assoc :type message-type
                              :event event)
-                      operation.util/normalize-command)]
-    (if (and from-admin? (some? operation))
-      (when (= :not-handled (operation.admin.core/process! operation))
-        (operation.public.core/process! operation))
+                      (merge (when (= :public message-type)
+                               {:channel (.getName (.getChannel event))}))
+                      operation.util/normalize-command)
+        command? (-> operation :command some?)
+        not-handled-admin-op? (when (and from-admin? command?)
+                                (= :not-handled (operation.admin.core/process! operation)))]
+    (cond
+      (not command?)
+      (operation.public.core/process-message! operation)
+
+      not-handled-admin-op?
       (operation.public.core/process! operation))))
 
 (defn process-whois! [^WhoisEvent event]
