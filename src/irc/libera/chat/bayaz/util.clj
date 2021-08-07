@@ -1,6 +1,5 @@
 (ns irc.libera.chat.bayaz.util
   (:import [java.io InputStream ByteArrayOutputStream]
-           [java.util Locale]
            [java.text StringCharacterIterator]))
 
 (def max-message-length 256)
@@ -15,7 +14,9 @@
       (str (subs text 0 (dec max-length)) "…"))))
 
 ; Ported from: https://stackoverflow.com/a/3758880
-(defn size->human-readable [size-in-bytes]
+(defn size->human-readable
+  "Converts a size, in byts, to a human readable format, such as 0 B, 1.5 kB, 10 GB, etc."
+  [size-in-bytes]
   (if (and (< -1000 size-in-bytes) (< size-in-bytes 1000))
     (str size-in-bytes " B")
     (let [ci (StringCharacterIterator. "kMGTPE")

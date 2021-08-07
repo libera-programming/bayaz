@@ -20,7 +20,31 @@
   :not-handled)
 
 (def max-content-size (* 10 1000)) ; 1 kB
-(defn fetch-url!* [url]
+(defn fetch-url!*
+  "Fetches the URL, first with a HEAD to detect the content type and existence, and then with a GET
+   in the case of an HTML type.
+
+   Situations:
+   * If HEAD results in too many redirects, do nothing
+   * If HEAD results in a non-200, do nothing
+   * If HEAD says the content type is non-HTML, return the following
+     * If the final domain is different from the original, assoc it
+     * If the content type is present, assoc it
+     * If the content length is present, assoc it
+   * Otherwise, do a GET and read the body as a stream, with a max size
+     * Parse the body as HTML and return the following
+       * If og:title exists, assoc it
+       * If a <title> tag exists, assoc it
+   * Otherwise, do nothing
+
+   Protections:
+   * Socket timeout
+   * Connection timeout
+   * Max redirect amount
+   * Max content size read from stream
+   * Graceful parsing of partial and junk HTML
+   * Graceful handling of junk in parsed headers"
+  [url]
   (let [http-opts {:throw-exceptions false
                    :ignore-unknown-host? true
                    :max-redirects 5

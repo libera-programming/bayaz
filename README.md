@@ -49,6 +49,7 @@
     - [X] Max streaming download size
     - [X] Max redirect amount
     - [X] Graceful parsing of partial and invalid HTML
+    - [X] Graceful parsing of junk in headers
     - [X] Limit output to fixed amount
 - [X] Protections
   - [X] Ignore messages from self
