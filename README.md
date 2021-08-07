@@ -51,4 +51,4 @@
     - [X] Graceful parsing of partial and invalid HTML
     - [X] Limit output to fixed amount
 - [X] Protections
-  - [ ] Ignore messages from self
+  - [X] Ignore messages from self

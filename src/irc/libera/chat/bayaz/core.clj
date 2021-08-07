@@ -33,23 +33,24 @@
       (.setMode (.send channel) "b"))))
 
 (defn process-message! [^User user message message-type event]
-  ; TODO: Check if from self.
-  (let [from-admin? (admin?! user)
-        operation (-> (operation.util/message->operation message)
-                      (assoc :type message-type
-                             :event event)
-                      (merge (when (= :public message-type)
-                               {:channel (.getName (.getChannel event))}))
-                      operation.util/normalize-command)
-        command? (-> operation :command some?)
-        not-handled-admin-op? (when (and from-admin? command?)
-                                (= :not-handled (operation.admin.core/process! operation)))]
-    (cond
-      (not command?)
-      (operation.public.core/process-message! operation)
+  ; TODO: Test this.
+  (when-not (= (.getUserBot ^PircBotX @state/bot) user)
+    (let [from-admin? (admin?! user)
+          operation (-> (operation.util/message->operation message)
+                        (assoc :type message-type
+                               :event event)
+                        (merge (when (= :public message-type)
+                                 {:channel (.getName (.getChannel event))}))
+                        operation.util/normalize-command)
+          command? (-> operation :command some?)
+          not-handled-admin-op? (when (and from-admin? command?)
+                                  (= :not-handled (operation.admin.core/process! operation)))]
+      (cond
+        (not command?)
+        (operation.public.core/process-message! operation)
 
-      not-handled-admin-op?
-      (operation.public.core/process! operation))))
+        not-handled-admin-op?
+        (operation.public.core/process! operation)))))
 
 (defn process-whois! [^WhoisEvent event]
   ; There's probably an operation waiting for the result of a whois request, so deliver
