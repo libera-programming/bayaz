@@ -50,6 +50,7 @@
     - [X] Max redirect amount
     - [X] Graceful parsing of partial and invalid HTML
     - [X] Graceful parsing of junk in headers
+    - [X] Strip out whitespace
     - [X] Limit output to fixed amount
 - [X] Protections
   - [X] Ignore messages from self

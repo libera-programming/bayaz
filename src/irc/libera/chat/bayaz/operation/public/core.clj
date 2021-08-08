@@ -52,6 +52,7 @@
                    :socket-timeout 2000
                    :connection-timeout 2000}
         domain (util/url->domain url)
+        ; TODO: Can we remove the HEAD altogether and just use a GET?
         head (http/head url http-opts)
         head-status (get head :status 404)
         html? (string/includes? (get-in head [:headers "content-type"] "") "text/html")
@@ -104,6 +105,8 @@
 
         (-> info :title some?)
         (str "\u0002Title\u000F: " (:title info) " "))
+      ; Strip out new lines, tabs, indentation, etc.
+      (string/replace #"\s+" " ")
       (util/truncate util/max-message-length)))
 
 (defn process-message! [op]
