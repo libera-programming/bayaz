@@ -19,7 +19,7 @@
   [_op]
   :not-handled)
 
-(def max-content-size (* 10 1000)) ; 1 kB
+(def max-content-size (* 512 1000)) ; 512 kB
 (defn fetch-url!*
   "Fetches the URL, first with a HEAD to detect the content type and existence, and then with a GET
    in the case of an HTML type.
