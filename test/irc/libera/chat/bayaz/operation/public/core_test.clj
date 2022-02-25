@@ -71,6 +71,18 @@
                                   :body (str->stream "<html><head><meta data-rh=\"true\" content=\"OG Title\" property=\"og:title\">")})]
           (t/is (= {:status 200
                     :title "OG Title"}
+                   (operation.public.core/fetch-url!* url)))))
+
+      (t/testing "application/xhtml+xml <title>"
+        (with-redefs [http/head (fn [_url _opts]
+                                  {:status 200
+                                   :headers {"content-type" "application/xhtml+xml"}})
+                      http/get (fn [_url _opts]
+                                 {:status 200
+                                  :headers {"content-type" "text/html"}
+                                  :body (str->stream "<html><head><title>HTML Title</title>")})]
+          (t/is (= {:status 200
+                    :title "HTML Title"}
                    (operation.public.core/fetch-url!* url))))))
 
     (t/testing "invalid html"

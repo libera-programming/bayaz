@@ -55,7 +55,8 @@
         ; TODO: Can we remove the HEAD altogether and just use a GET?
         head (http/head url http-opts)
         head-status (get head :status 404)
-        html? (string/includes? (get-in head [:headers "content-type"] "") "text/html")
+        html? (some #(string/includes? (get-in head [:headers "content-type"] "") %)
+                    ["text/html" "application/xhtml+xml"])
         redirects (:trace-redirects head)]
     (cond
       (not= 200 head-status)
