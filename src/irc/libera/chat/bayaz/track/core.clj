@@ -21,13 +21,16 @@
     (reset! queue (async/chan Long/MAX_VALUE))
     (async/go-loop
       []
-      (let [event-data (async/<! @queue)
-            event-result (try
-                           (async/<! ((:fn event-data)))
-                           (catch Exception e
-                             (println e)
-                             :error))]
-        (async/>! (:chan event-data) event-result))
+      (try
+        (let [event-data (async/<! @queue)
+              event-result (try
+                             (async/<! ((:fn event-data)))
+                             (catch Exception e
+                               (println e)
+                               :error))]
+          (async/>! (:chan event-data) (or event-result :done)))
+        (catch Exception e
+          (println e)))
 
       ; Loop forever.
       (recur))))
