@@ -26,7 +26,7 @@
                            (async/<! ((:fn event-data)))
                            (catch Exception e
                              (println e)
-                             nil))]
+                             :error))]
         (async/>! (:chan event-data) event-result))
 
       ; Loop forever.
@@ -42,7 +42,7 @@
                                                     :where
                                                     [?h :user/hostname ?hostname]]
                                                   hostname)
-        track! (fn [association-keyword association]
+        track! (fn track! [association-keyword association]
                  (let [q '[:find ?e
                            :in $ ?hostname ?association-keyword ?association
                            :where
@@ -78,6 +78,10 @@
 
                          (println "tracking" (.getNick user))
                          (let [^WhoisEvent whois-event (async/<! (operation.util/whois! user))]
+                           (println "whois for"
+                                    (.getNick user)
+                                    {:hostname (.getHostname whois-event)
+                                     :account (.getRegisteredAs whois-event)})
                            (track-user!* (.getHostname whois-event)
                                          (.getNick whois-event)
                                          (.getRegisteredAs whois-event)
