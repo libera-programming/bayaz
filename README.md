@@ -25,7 +25,7 @@
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
   - [ ] Nick/host status lookup (ban/quiet)
-  - [ ] Host/nick stalking
+  - [X] Host/nick stalking
     - [ ] Query common hosts and nicks by pattern
   - [ ] +m mode (channel gets +m, ops get +o, everyone gets +v; we can then manually -v people)
   - [X] `!ops` command to ping all admins

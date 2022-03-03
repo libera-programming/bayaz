@@ -1,5 +1,6 @@
 (ns irc.libera.chat.bayaz.util
-  (:import [java.io InputStream ByteArrayOutputStream]
+  (:import [clojure.core.async.impl.channels ManyToManyChannel]
+           [java.io InputStream ByteArrayOutputStream]
            [java.text StringCharacterIterator]))
 
 (def max-message-length 256)
@@ -59,3 +60,6 @@
             (do
               (.write output-stream buffer 0 size)
               (recur new-total-size))))))))
+
+(defn chan? [v]
+  (instance? ManyToManyChannel v))

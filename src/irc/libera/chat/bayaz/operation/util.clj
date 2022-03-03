@@ -1,6 +1,7 @@
 (ns irc.libera.chat.bayaz.operation.util
   (:require [clojure.string :as string]
             [clojure.core.memoize :as memo]
+            [clojure.core.async :as async]
             [irc.libera.chat.bayaz.state :as state])
   (:import [org.pircbotx PircBotX User UserChannelDao]
            [org.pircbotx.hooks.events WhoisEvent]))
@@ -68,24 +69,26 @@
       :else
       operation)))
 
-(defn whois!*
-  "Fetches a WhoisEvent for the specified user. This requires blocking on a promise until the
-   response to the whois request is returned. Returns nil if this fails due to a timeout."
-  ^WhoisEvent [^User user]
-  (let [nick (.getNick user)
-        new-promise (promise)
-        pending-snapshot (swap! state/pending-event-requests
-                                (fn [pev]
-                                  (if (some? (get-in pev [:whois nick]))
-                                    pev
-                                    (assoc-in pev [:whois nick] new-promise))))
-        pending-whois (get-in pending-snapshot [:whois nick])
-        new-request? (identical? new-promise pending-whois)]
-    (when new-request?
-      (-> user .send .whois))
-    (deref pending-whois 5000 nil)))
-; Whois requests are rate limited, so we need a short cache for these.
-(def whois! (memo/ttl whois!* {} :ttl/threshold (* 30 1000))) ; ms
+(defn whois!
+  "Asynchronously fetches a WhoisEvent for the specified user. Returns the
+  WhoisEvent. If the fetch times out, nil is returned."
+  [^User user]
+  (async/go
+    (let [nick (.getNick user)
+          new-chan (async/chan)
+          timeout-chan (async/timeout 5000)
+          pending-snapshot (swap! state/pending-event-requests
+                                  (fn [pev]
+                                    (if (some? (get-in pev [:whois nick]))
+                                      pev
+                                      (assoc-in pev [:whois nick] new-chan))))
+          pending-whois (get-in pending-snapshot [:whois nick])
+          new-request? (identical? new-chan pending-whois)]
+      (when new-request?
+        (-> user .send .whois))
+
+      (let [[v _port] (async/alts! [pending-whois timeout-chan] :priority true)]
+        v))))
 
 (defn resolve-account!
   "Resolves an identifier to the most useful incarnation. These identifiers take three shapes:
@@ -98,21 +101,22 @@
    account, as well as name changes. The second shape is resolved into a hostmask which covers
    all users and nicks from that host. The third is passed through unchanged."
   [^String who]
-  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
-    (or (when (.containsUser user-channel-dao who)
-          (when-some [whois-event (whois! (.getUser user-channel-dao who))]
-            (let [account-name (.getRegisteredAs whois-event)]
-              (cond
-                (not (empty? account-name))
-                (str "$a:" account-name)
+  (async/go
+    (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
+      (or (when (.containsUser user-channel-dao who)
+            (when-some [whois-event (async/<! (whois! (.getUser user-channel-dao who)))]
+              (let [account-name (.getRegisteredAs whois-event)]
+                (cond
+                  (not (empty? account-name))
+                  (str "$a:" account-name)
 
-                ; A failed whois may have an empty hostname, which would create a *!*@* hostmask.
-                (some? (.getHostname whois-event))
-                (str "*!*@" (.getHostname whois-event))
+                  ; A failed whois may have an empty hostname, which would create a *!*@* hostmask.
+                  (some? (.getHostname whois-event))
+                  (str "*!*@" (.getHostname whois-event))
 
-                :else
-                nil))))
-        who)))
+                  :else
+                  nil))))
+          who))))
 
 (defn action! [& args]
   (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
@@ -125,11 +129,12 @@
   "Sets the mode for the specified user in the primary channel. `who` can be any valid user
    identifier and `mode` should be the modes to set, prefixed with + or - as necessary."
   [who mode]
-  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
-        new-mode (str mode " " (resolve-account! who))]
-    (-> (.send channel)
-        (.setMode new-mode))))
+  (async/go
+    (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+          channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
+          new-mode (str mode " " (async/<! (resolve-account! who)))]
+      (-> (.send channel)
+          (.setMode new-mode)))))
 
 (defn kick!
   "Kicks a user from the primary channel. Note that `who` has to be a nick in order for this
