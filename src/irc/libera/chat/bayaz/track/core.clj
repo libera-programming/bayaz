@@ -33,6 +33,7 @@
       (recur))))
 
 (defn track-user!* [hostname nick account timestamp]
+  ; TODO: Check the last update and skip if it's too recent.
   (let [; TODO: Lower-case this?
         _ (db.core/transact! [{:db/id -1
                                :user/hostname hostname}])
@@ -75,6 +76,7 @@
                          ; at a time, too.
                          (async/<! (async/timeout track-user-delay-ms))
 
+                         (println "tracking" (.getNick user))
                          (let [^WhoisEvent whois-event (async/<! (operation.util/whois! user))]
                            (track-user!* (.getHostname whois-event)
                                          (.getNick whois-event)
