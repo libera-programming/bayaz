@@ -63,3 +63,9 @@
 
 (defn chan? [v]
   (instance? ManyToManyChannel v))
+
+(defn java-tags->clj-tags [java-tags]
+  (->> java-tags
+       (map (fn [[k v]]
+              [(keyword k) v]))
+       (into {})) )

@@ -61,15 +61,16 @@
 (comment
   (connect!)
 
-  (transact! [{:db/id -1
-               :user/hostname "user/jeaye"}])
+  (do
+    @(future (transact! [{:db/id -1
+               :user/hostname "user/pyzozord"}])))
 
   (query! '[:find (pull ?e [*])
             :where
             [?e]])
   (query! '[:find (pull ?e [*])
             :where
-            [?e :user/hostname "user/jeaye"]])
+            [?e :user/hostname "user/pyzozord"]])
   (query! '[:find (pull ?e [*])
             :where
-            [?e :user/nick-association]]))
+            [?e :user/nick-association "VIle`"]]))

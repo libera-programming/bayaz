@@ -54,3 +54,7 @@
     - [X] Limit output to fixed amount
 - [X] Protections
   - [X] Ignore messages from self
+
+## TODO
+* This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492
+* Config vector for features (i.e. admin commands, title fetching, etc)

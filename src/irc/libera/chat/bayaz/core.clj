@@ -3,7 +3,6 @@
   (:require [clojure.string :as string]
             [clojure.core.incubator :refer [dissoc-in]]
             [clojure.core.async :as async]
-            [datalevin.core :as datalevin]
             [irc.libera.chat.bayaz.util :as util]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.db.core :as db.core]
@@ -12,46 +11,33 @@
             [irc.libera.chat.bayaz.operation.public.core :as operation.public.core]
             [irc.libera.chat.bayaz.operation.util :as operation.util])
   (:import [org.pircbotx PircBotX Configuration$Builder User]
-           [org.pircbotx.cap SASLCapHandler]
+           [org.pircbotx.cap SASLCapHandler EnableCapHandler]
            [org.pircbotx.delay StaticDelay]
            [org.pircbotx.hooks ListenerAdapter]
            [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent
-            UserListEvent BanListEvent QuietListEvent JoinEvent]))
+            UserListEvent BanListEvent QuietListEvent JoinEvent PartEvent QuitEvent
+            ServerResponseEvent]))
 
-(defn admin? [user-login]
-  (contains? (:admins @state/global-config) (string/lower-case user-login)))
+(defn admin? [account]
+  (contains? (:admins @state/global-config) (string/lower-case account)))
 
-(defn admin?! [^User user]
-  ; We first check the login name, which needs to match. Then we do the expensive whois
-  ; to be absolutely certain. We remove the ~ prefix from the login to match that account name.
-  (async/go
-    (or (when (admin? (subs (.getLogin user) 1))
-          (when-some [^WhoisEvent whois-event (async/<! (operation.util/whois! user))]
-            (admin? (.getRegisteredAs whois-event))))
-        false)))
-
-(defn process-user-list! [^UserListEvent event]
-  ; We get two UserListEvents when joining a channel. One from NAMES, which is
-  ; not complete, meaning it lacks hostname and login info for each user, and
-  ; one from WHO, which has all of that and is complete.
-  (when (.isComplete event)
-    (doseq [user (.getUsers event)]
-      (println "process user list" (.getNick user))
-      (track.core/track-user! user (.getTimestamp event)))))
-
-(defn fetch-ban-lists! [^UserListEvent event]
-  (when (and (= (:primary-channel @state/global-config) (.getName (.getChannel event)))
-             (.isComplete event))
-    (let [channel (.getChannel event)]
-      ; Request the quiet and ban lists.
-      (.setMode (.send channel) "q")
-      (.setMode (.send channel) "b"))))
+(defn track-with-tags! [nick hostname tags timestamp]
+  (send-off track.core/queue
+            (fn [_]
+              (track.core/track-user! (merge tags {:nick nick
+                                                   :hostname hostname})
+                                      timestamp))))
 
 (defn process-message! [^User user message message-type event]
-  ; TODO: Test this check.
-  (when-not (= (.getUserBot ^PircBotX @state/bot) user)
-    (async/go
-      (let [from-admin? (async/<! (admin?! user))
+  (let [account (-> event .getTags util/java-tags->clj-tags :account)]
+    (track-with-tags! (.getNick user)
+                      (-> event .getUserHostmask .getHostname)
+                      (-> event .getTags util/java-tags->clj-tags)
+                      (.getTimestamp event))
+
+    ; TODO: Test this check.
+    (when-not (= (.getUserBot ^PircBotX @state/bot) user)
+      (let [from-admin? (admin? account)
             operation (-> (operation.util/message->operation message)
                           (assoc :type message-type
                                  :event event)
@@ -90,16 +76,55 @@
     (deliver pending event)))
 
 (defn process-join! [^JoinEvent event]
-  (println "process join" (-> event .getUser .getNick))
-  (track.core/track-user! (.getUser event) (.getTimestamp event)))
+  (let [channel-name (-> event .getChannel .getName)
+        user (.getUser event)]
+    (println "process join" channel-name (.getNick user))
+
+    ; If we're joining a channel, send a WHOX to learn about every user in the channel. We only
+    ; request for the useful info for tracking: hostname, nick, and account.
+    (if (= (.getUserBot ^PircBotX @state/bot) user)
+      (-> @state/bot
+          .sendRaw
+          (.rawLine (str "WHO " (-> event .getChannel .getName) " %hna")))
+      ; Some other user joining.
+      (track-with-tags! (.getNick user)
+                        (-> event .getUserHostmask .getHostname)
+                        (-> event .getTags util/java-tags->clj-tags)
+                        (.getTimestamp event)))))
+
+(defn process-part! [^PartEvent event]
+  (println "process part" (-> event .getChannel .getName) (-> event .getUser .getNick))
+  (track-with-tags! (-> event .getUser .getNick)
+                    (-> event .getUserHostmask .getHostname)
+                    (-> event .getTags util/java-tags->clj-tags)
+                    (.getTimestamp event)))
+
+(defn process-quit! [^QuitEvent event]
+  (println "process quit" (-> event .getChannel .getName) (-> event .getUser .getNick))
+  (track-with-tags! (-> event .getUser .getNick)
+                    (-> event .getUserHostmask .getHostname)
+                    (-> event .getTags util/java-tags->clj-tags)
+                    (.getTimestamp event)))
+
+(def lock (Object.))
+
+(defn process-server-response! [^ServerResponseEvent event]
+  #_(locking lock
+    (println "raw" (.getCode event) (.getRawLine event)))
+  (case (.getCode event)
+    ; :molybdenum.libera.chat 354 client hostname nick account
+    354
+    (let [[_ _ _ hostname nick account] (clojure.string/split (.getRawLine event) #" ")]
+      (track-with-tags! nick hostname
+                        (merge {}
+                               (when-not (= "0" account)
+                                 {:account account}))
+                        (.getTimestamp event)))))
 
 (def event-listener (proxy [ListenerAdapter] []
                       ; Each of these calls out to a standalone function for the primary purpose
                       ; of live code reloading during dev. Clojure functions can be easily
                       ; redefined, but this proxy class will be immutable inside the bot.
-                      (onUserList [^UserListEvent event]
-                        (process-user-list! event)
-                        (fetch-ban-lists! event))
                       (onMessage [^MessageEvent event]
                         (process-message! (.getUser event) (.getMessage event) :public event))
                       (onPrivateMessage [^PrivateMessageEvent event]
@@ -111,7 +136,13 @@
                       (onQuietList [^QuietListEvent event]
                         (process-quiet-list! event))
                       (onJoin [^JoinEvent event]
-                        (process-join! event))))
+                        (process-join! event))
+                      (onPart [^PartEvent event]
+                        (process-part! event))
+                      (onQuit [^QuitEvent event]
+                        (process-quit! event))
+                      (onServerResponse [^ServerResponseEvent event]
+                        (process-server-response! event))))
 
 (defn start! []
   (let [bot-config (-> (Configuration$Builder.)
@@ -122,13 +153,20 @@
                        (.setMessageDelay (StaticDelay. 0))
                        (.addCapHandler (SASLCapHandler. (:nick @state/global-config)
                                                         (:pass @state/global-config)))
+                       ; This is magic sauce; it asks the network to include an IRCv3 @account= tag
+                       ; on messages/actions/mode sets from registered users. It means we don't need
+                       ; to whois everyone.
+                       (.addCapHandler (EnableCapHandler. "account-tag"))
                        (.addAutoJoinChannels (seq (cons (:primary-channel @state/global-config)
                                                         (:additional-channels @state/global-config))))
                        (.addListener event-listener)
+                       ; We send our own WHOX, rather than the lib's WHO, so we
+                       ; can get account info for everyone already in the
+                       ; channel.
+                       (.setOnJoinWhoEnabled false)
                        .buildConfiguration)]
     (reset! state/bot (PircBotX. bot-config))
     (db.core/connect!)
-    (track.core/start-listener!)
     (future (.startBot ^PircBotX @state/bot))))
 
 (defn stop! []
@@ -149,7 +187,11 @@
 
 (comment
   (stop!)
-  (restart!))
+  (restart!)
+
+  (-> @state/bot
+      .sendRaw
+      (.rawLine "WHO ##programming-bots %hna")))
 
 (defn -main [& args]
   (start!))

@@ -1,43 +1,18 @@
 (ns irc.libera.chat.bayaz.track.core
-  (:require [clojure.core.async :as async]
-            [irc.libera.chat.bayaz.db.core :as db.core]
-            [irc.libera.chat.bayaz.operation.util :as operation.util])
-  (:import [org.pircbotx User]
-           [org.pircbotx.hooks.events WhoisEvent]))
+  (:require [clojure.string]
+            [irc.libera.chat.bayaz.db.core :as db.core]))
 
-; Tracking is slow and passive. We queue up functions single-file, add delays to prevent network
-; spam, and then ultimately take note of users' hostname, nick, and account associations in our db.
+(def queue (agent []
+                  :error-handler (fn [_ exception]
+                                   (println "tracking error" exception))
+                  :error-mode :continue))
 
-(def queue
-  "A queue of functions to run asynchronously for tracking users. The queue is
-  useful for funneling all concurrent requests so no duplicate work done and we
-  don't need to worry much about transactions. With our scaling requirements,
-  it's not a concern until proven otherwise."
-  (atom nil))
-
-(defn start-listener! []
-  (when (nil? @queue)
-    ; Unbounded channel, so nothing is dropped.
-    (reset! queue (async/chan Long/MAX_VALUE))
-    (async/go-loop
-      []
-      (try
-        (let [event-data (async/<! @queue)
-              event-result (try
-                             (async/<! ((:fn event-data)))
-                             (catch Exception e
-                               (println e)
-                               :error))]
-          (async/>! (:chan event-data) (or event-result :done)))
-        (catch Exception e
-          (println e)))
-
-      ; Loop forever.
-      (recur))))
-
-(defn track-user!* [hostname nick account timestamp]
-  ; TODO: Check the last update and skip if it's too recent.
-  (let [; TODO: Lower-case this?
+(defn track-user! [{:keys [nick hostname account]} timestamp]
+  (let [nick (clojure.string/lower-case nick)
+        hostname (clojure.string/lower-case hostname)
+        account (when (some? account)
+                  (clojure.string/lower-case account))
+        _ (println "track user" hostname nick account)
         _ (db.core/transact! [{:db/id -1
                                :user/hostname hostname}])
         [existing-hostname] (db.core/query-first! '[:find ?h
@@ -64,29 +39,5 @@
                                           :time/when timestamp})])))]
     (track! :user/nick-association nick)
     (when-not (empty? account)
-      (track! :user/account-association account))))
-
-(def track-user-delay-ms (* 60 1000))
-(defn track-user! [^User user timestamp]
-  (let [result-chan (async/chan)]
-    (async/go
-      (async/>! @queue
-                {:chan result-chan
-                 :fn (fn []
-                       (async/go
-                         ; We delay before each whois event for tracking, since we don't want to spam
-                         ; the network. The queue each of these goes through ensures they're done one
-                         ; at a time, too.
-                         (async/<! (async/timeout track-user-delay-ms))
-
-                         (println "tracking" (.getNick user))
-                         (let [^WhoisEvent whois-event (async/<! (operation.util/whois! user))]
-                           (println "whois for"
-                                    (.getNick user)
-                                    {:hostname (.getHostname whois-event)
-                                     :account (.getRegisteredAs whois-event)})
-                           (track-user!* (.getHostname whois-event)
-                                         (.getNick whois-event)
-                                         (.getRegisteredAs whois-event)
-                                         timestamp))))})
-      (async/<! result-chan))))
+      (track! :user/account-association account)))
+  nil)
