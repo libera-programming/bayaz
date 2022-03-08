@@ -15,8 +15,8 @@
            [org.pircbotx.delay StaticDelay]
            [org.pircbotx.hooks ListenerAdapter]
            [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent
-            UserListEvent BanListEvent QuietListEvent JoinEvent PartEvent QuitEvent
-            ServerResponseEvent]))
+            BanListEvent QuietListEvent JoinEvent PartEvent QuitEvent
+            ServerResponseEvent NickChangeEvent]))
 
 (defn admin? [account]
   (contains? (:admins @state/global-config) (string/lower-case account)))
@@ -106,6 +106,17 @@
                     (-> event .getTags util/java-tags->clj-tags)
                     (.getTimestamp event)))
 
+(defn process-nick-change! [^NickChangeEvent event]
+  (println "process nick change"
+           (-> event .getChannel .getName)
+           (-> event .getUser .getOldNick)
+           "->"
+           (-> event .getUser .getNewNick))
+  (track-with-tags! (-> event .getUser .getNewNick)
+                    (-> event .getUserHostmask .getHostname)
+                    (-> event .getTags util/java-tags->clj-tags)
+                    (.getTimestamp event)))
+
 (def lock (Object.))
 
 (defn process-server-response! [^ServerResponseEvent event]
@@ -141,6 +152,8 @@
                         (process-part! event))
                       (onQuit [^QuitEvent event]
                         (process-quit! event))
+                      (onNickChange [^NickChangeEvent event]
+                        (process-nick-change! event))
                       (onServerResponse [^ServerResponseEvent event]
                         (process-server-response! event))))
 
