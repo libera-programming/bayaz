@@ -20,3 +20,6 @@
 ; TODO: Validate and merge with default config.
 (def global-config (delay (merge (read-config (io/resource "base-config.edn"))
                                  (read-config "config.edn"))))
+
+(defn feature-enabled? [feature]
+  (contains? (:features @global-config) feature))

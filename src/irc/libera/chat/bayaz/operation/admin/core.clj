@@ -7,6 +7,7 @@
   (fn [op]
     (:command op)))
 
+; TODO: Move this to a markdown file in the repo and just link to it.
 (def command->help {"help" {:order 0
                             :description "Show this help output."}
                     "warn" {:order 2

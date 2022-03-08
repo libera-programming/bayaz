@@ -45,7 +45,7 @@
                                    {:channel (.getName (.getChannel event))}))
                           operation.util/normalize-command)
             command? (-> operation :command some?)
-            not-handled-admin-op? (when (and from-admin? command?)
+            not-handled-admin-op? (when (and from-admin? command? (state/feature-enabled? :admin))
                                     (= :not-handled (operation.admin.core/process! operation)))]
         (cond
           (not command?)

@@ -12,8 +12,9 @@
 
 (defmethod process! "ops"
   [op]
-  (.respondWith (:event op)
-                (str "Admins are: " (string/join ", " (:admins @state/global-config)))))
+  (when (state/feature-enabled? :ops-command)
+    (.respondWith (:event op)
+                  (str "Admins are: " (string/join ", " (:admins @state/global-config))))))
 
 (defmethod process! :default
   [_op]
@@ -111,7 +112,8 @@
       (util/truncate util/max-message-length)))
 
 (defn process-message! [op]
-  (when (= (:channel op) (:primary-channel @state/global-config))
+  (when (and (state/feature-enabled? :title-fetch)
+             (= (:channel op) (:primary-channel @state/global-config)))
     (let [urls (->> (:parts op)
                     (filter (fn [s]
                               (re-matches #"https?://\S+" s))))
