@@ -4,7 +4,8 @@
             [irc.libera.chat.bayaz.db.core :as db.core]))
 
 (t/deftest read+write
-  (with-redefs [db.core/connection (-> (datalevin/db-with (datalevin/empty-db) db.core/txs)
+  (with-redefs [db.core/connection (-> (datalevin/empty-db nil db.core/schema)
+                                       (datalevin/db-with db.core/txs)
                                        datalevin/conn-from-db
                                        delay)]
     (t/is (empty? (db.core/query! '[:find ?e

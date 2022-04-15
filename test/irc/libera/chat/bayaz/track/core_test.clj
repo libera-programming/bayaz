@@ -10,18 +10,6 @@
 
 ; TODO: Test for no account
 
-(defn generate-bot! []
-    (-> (Configuration$Builder.)
-        (.addServer "127.1.1.1")
-        (.setListenerManager (GenericListenerManager.))
-        (.setName "TestBot")
-        (.setMessageDelay (StaticReadonlyDelay. 0))
-        (.setShutdownHookEnabled false)
-        (.setAutoReconnect false)
-        (.setCapEnabled false)
-        .buildConfiguration
-        PircBotX.))
-
 (def nick "test-user-nick")
 (def account "test-user-account")
 (def hostname "test-user-hostname")

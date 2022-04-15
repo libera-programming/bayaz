@@ -27,7 +27,8 @@
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
   - [ ] Nick/host status lookup (ban/quiet)
-  - [X] Host/nick stalking
+  - [X] Host/nick tracking
+    - [X] Use tracking db for admin operations
     - [ ] Query common hosts and nicks by pattern
   - [ ] +m mode (channel gets +m, ops get +o, everyone gets +v; we can then manually -v people)
   - [X] `!ops` command to ping all admins
@@ -36,7 +37,6 @@
     - [ ] Automatic quiet after pinging more than N nicks in one message
     - [ ] Automatic quiet after using certain words
     - [ ] Automatic ignore after receiving X DMs in Y seconds
-  - [ ] Channel logging
 - [X] URL lookup
   - [X] Title lookup
   - [X] Domain resolution
@@ -59,4 +59,4 @@
 
 ## TODO
 * This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492
-* Config vector for features (i.e. admin commands, title fetching, etc)
+* Unquiet on ban

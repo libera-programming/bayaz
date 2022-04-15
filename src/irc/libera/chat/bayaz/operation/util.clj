@@ -1,10 +1,9 @@
 (ns irc.libera.chat.bayaz.operation.util
   (:require [clojure.string :as string]
-            [clojure.core.memoize :as memo]
             [clojure.core.async :as async]
-            [irc.libera.chat.bayaz.state :as state])
-  (:import [org.pircbotx PircBotX User UserChannelDao]
-           [org.pircbotx.hooks.events WhoisEvent]))
+            [irc.libera.chat.bayaz.state :as state]
+            [irc.libera.chat.bayaz.db.core :as db.core])
+  (:import [org.pircbotx PircBotX User UserChannelDao]))
 
 (let [make-prefixes (fn [command & prefixes]
                       (-> (map #(str (:command-prefix @state/global-config) %)
@@ -17,10 +16,10 @@
   (def prefixed-command->command (delay (merge (make-prefixes "help" "h")
                                                (make-prefixes "admins")
                                                (make-prefixes "warn" "w")
-                                               (make-prefixes "quiet" "q")
-                                               (make-prefixes "unquiet" "unq" "uq")
-                                               (make-prefixes "ban" "b")
-                                               (make-prefixes "unban" "unb" "ub")
+                                               (make-prefixes "quiet" "q" "+q")
+                                               (make-prefixes "unquiet" "unq" "uq" "-q")
+                                               (make-prefixes "ban" "b" "+b")
+                                               (make-prefixes "unban" "unb" "ub" "-b")
                                                (make-prefixes "kickban" "kb")
                                                (make-prefixes "kick" "k")
 
@@ -50,9 +49,9 @@
 
 (defn normalize-command
   "Determines if the operation contains a properly prefixed command and resolves the prefix, if
-   necessary. Updates :command to be nil if the operation isn't correctly
-   prefixed. Otherwise returns the operation with the command normalized to the
-   full form."
+  necessary. Updates :command to be nil if the operation isn't correctly
+  prefixed. Otherwise returns the operation with the command normalized to the
+  full form."
   [operation]
   (let [prefixed? (string/starts-with? (:command operation) (:command-prefix @state/global-config))
         prefix-required? (and (= :public (:type operation)) (-> operation :mention? not))
@@ -91,32 +90,50 @@
         v))))
 
 (defn resolve-account!
-  "Resolves an identifier to the most useful incarnation. These identifiers take three shapes:
+  "Resolves an identifier to the most useful incarnation. These identifiers match three cases:
 
-   1. The nick of a registered user
-   2. The nick of an unregistered user
-   3. A hostmask
+  1. The nick of a registered user
+  2. The nick of an unregistered user
+  3. A hostmask
 
-   The first shape is resolved to an account specifier, to cover all clients logged into that
-   account, as well as name changes. The second shape is resolved into a hostmask which covers
-   all users and nicks from that host. The third is passed through unchanged."
+  The first case is resolved to an account specifier, to cover all clients logged into that
+  account, as well as name changes. The second case is resolved into a hostmask which covers
+  all users and nicks from that host. The third is passed through unchanged."
   [^String who]
-  (async/go
-    (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
-      (or (when (.containsUser user-channel-dao who)
-            (when-some [whois-event (async/<! (whois! (.getUser user-channel-dao who)))]
-              (let [account-name (.getRegisteredAs whois-event)]
-                (cond
-                  (not (empty? account-name))
-                  (str "$a:" account-name)
+  (let [who (clojure.string/lower-case who)
+        ; A nick associated with multiple hostnames or accounts will always
+        ; resolve to the most recent.
+        select-most-recent (comp first #(sort (fn [l r]
+                                                ; We assume ?when is last.
+                                                (compare (last r) (last l)))
+                                              %))
+        [hostname-entity hostname] (-> (db.core/query! '[:find ?h ?hostname ?when
+                                                         :in $ ?nick
+                                                         :where
+                                                         [?h :user/hostname ?hostname]
+                                                         [?n :user/hostname-ref ?h]
+                                                         [?n :time/when ?when]
+                                                         [?n :user/nick-association ?nick]]
+                                                       who)
+                                       select-most-recent)
+        [account] (-> (db.core/query! '[:find ?account ?when
+                                        :in $ ?h
+                                        :where
+                                        [?a :user/hostname-ref ?h]
+                                        [?a :time/when ?when]
+                                        [?a :user/account-association ?account]]
+                                      hostname-entity)
+                      select-most-recent)]
+    (cond
+      (some? account)
+      (str "$a:" account)
 
-                  ; A failed whois may have an empty hostname, which would create a *!*@* hostmask.
-                  (some? (.getHostname whois-event))
-                  (str "*!*@" (.getHostname whois-event))
+      (some? hostname)
+      hostname
 
-                  :else
-                  nil))))
-          who))))
+      ; Assume it's a hostmask.
+      :else
+      who)))
 
 (defn action! [& args]
   (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
@@ -127,18 +144,17 @@
 
 (defn set-user-mode!
   "Sets the mode for the specified user in the primary channel. `who` can be any valid user
-   identifier and `mode` should be the modes to set, prefixed with + or - as necessary."
+  identifier and `mode` should be the modes to set, prefixed with + or - as necessary."
   [who mode]
-  (async/go
-    (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-          channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
-          new-mode (str mode " " (async/<! (resolve-account! who)))]
-      (-> (.send channel)
-          (.setMode new-mode)))))
+  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
+        new-mode (str mode " " (resolve-account! who))]
+    (-> (.send channel)
+        (.setMode new-mode))))
 
 (defn kick!
   "Kicks a user from the primary channel. Note that `who` has to be a nick in order for this
-   to work."
+  to work."
   [^String who]
   (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))]
