@@ -57,5 +57,23 @@
 - [X] Protections
   - [X] Ignore messages from self
 
+## User documentation
+### Public operations
+| Command | Aliases | Usage    | Action                               |
+|---------|---------|----------|--------------------------------------|
+| `bayaz` |         | `!bayaz` | Share a link to bayaz's source repo. |
+| `ops`   |         | `!ops`   | Output a list of channel ops.        |
+
+### Admin operations
+| Command   | Aliases   | Usage               | Action                                                       |
+|-----------|-----------|---------------------|--------------------------------------------------------------|
+| `warn`    | `w`       | `!warn <nick>`      | Show a public warning to the nick, with an optional message. |
+| `quiet`   | `q`,`+q`  | `!quiet <target>`   | Set mode +q on the target.                                   |
+| `unquiet` | `uq`,`-q` | `!unquiet <target>` | Set mode -q on the target.                                   |
+| `ban`     | `b`,`+b`  | `!ban <target>`     | Set mode +b on the target.                                   |
+| `unban`   | `ub`,`-b` | `!unban <target>`   | Set mode -b on the target.                                   |
+| `kick`    | `k`       | `!kick <nick>`      | Remove the nick from the channel.                            |
+| `kickban` | `kb`      | `!kickban <nick>`   | Remove the nick from the channel and set mode +b.            |
+
 ## TODO
 * This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492

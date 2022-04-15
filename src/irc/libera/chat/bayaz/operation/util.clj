@@ -13,18 +13,17 @@
   ; `quiet` form may have a `!q` and `!quiet` prefixed form. Prefixed forms can be used
   ; in public channels without a bot mention, since they're meant to be distinct. Full
   ; forms can also be used, but only with a mention or via DM.
-  (def prefixed-command->command (delay (merge (make-prefixes "help" "h")
-                                               (make-prefixes "admins")
-                                               (make-prefixes "warn" "w")
+  (def prefixed-command->command (delay (merge (make-prefixes "warn" "w")
                                                (make-prefixes "quiet" "q" "+q")
-                                               (make-prefixes "unquiet" "unq" "uq" "-q")
+                                               (make-prefixes "unquiet" "uq" "-q")
                                                (make-prefixes "ban" "b" "+b")
-                                               (make-prefixes "unban" "unb" "ub" "-b")
+                                               (make-prefixes "unban" "ub" "-b")
                                                (make-prefixes "kickban" "kb")
                                                (make-prefixes "kick" "k")
 
                                                ; TODO: Differentiate between admin/public commands.
                                                ; Public
+                                               (make-prefixes "bayaz")
                                                (make-prefixes "ops"))))
   (def commands (delay (into #{} (vals @prefixed-command->command)))))
 

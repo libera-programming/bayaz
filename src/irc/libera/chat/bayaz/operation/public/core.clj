@@ -10,6 +10,12 @@
   (fn [op]
     (:command op)))
 
+(defmethod process! "bayaz"
+  [op]
+  (when (state/feature-enabled? :bayaz-command)
+    (.respondWith (:event op)
+                  (str "I'm a Clojure bot. My source is here: https://github.com/libera-programming/bayaz"))))
+
 (defmethod process! "ops"
   [op]
   (when (state/feature-enabled? :ops-command)

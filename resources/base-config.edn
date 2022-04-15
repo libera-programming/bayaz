@@ -7,4 +7,4 @@
  :primary-channel "##programming"
  :additional-channels ["##programming-ops"]
  :admins #{"jeaye" "inphase" "arahael" "mrig" "vdamewood" "pulse" "deniska" "amigojapan" "oldlaptop" "merijn"}
- :features #{:admin :ops-command :title-fetch}}
+ :features #{:admin :bayaz-command :ops-command :title-fetch}}
