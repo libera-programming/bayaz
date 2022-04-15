@@ -143,14 +143,16 @@
         (.action action))))
 
 (defn set-user-mode!
-  "Sets the mode for the specified user in the primary channel. `who` can be any valid user
-  identifier and `mode` should be the modes to set, prefixed with + or - as necessary."
-  [who mode]
+  "Sets the modes for the specified users in the primary channel. `who` is a
+  sequence of any valid user identifier and `modes` should be the modes to set,
+  prefixed with + or - as necessary."
+  [modes & who]
   (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
-        new-mode (str mode " " (resolve-account! who))]
+        ; TODO: This could be optimized to not resolve the same user more than once.
+        new-modes (clojure.string/join " " (cons modes (map resolve-account! who)))]
     (-> (.send channel)
-        (.setMode new-mode))))
+        (.setMode new-modes))))
 
 (defn kick!
   "Kicks a user from the primary channel. Note that `who` has to be a nick in order for this

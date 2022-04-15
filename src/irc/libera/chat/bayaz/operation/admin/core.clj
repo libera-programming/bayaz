@@ -74,25 +74,25 @@
   [op]
   (let [; TODO: Validate this input.
         [who why until] (:args op)]
-    (operation.util/set-user-mode! who "+q")))
+    (operation.util/set-user-mode! "+q" who)))
 
 (defmethod process! "unquiet"
   [op]
   (let [; TODO: Validate
         [who] (:args op)]
-    (operation.util/set-user-mode! who "-q")))
+    (operation.util/set-user-mode! "-q" who)))
 
 (defmethod process! "ban"
   [op]
   (let [; TODO: Validate this input.
         [who why until] (:args op)]
-    (operation.util/set-user-mode! who "+b")))
+    (operation.util/set-user-mode! "-q+b" who who)))
 
 (defmethod process! "unban"
   [op]
   (let [; TODO: Validate
         [who] (:args op)]
-    (operation.util/set-user-mode! who "-b")))
+    (operation.util/set-user-mode! "-b" who)))
 
 (defmethod process! "kickban"
   [op]

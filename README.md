@@ -59,4 +59,3 @@
 
 ## TODO
 * This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492
-* Unquiet on ban
