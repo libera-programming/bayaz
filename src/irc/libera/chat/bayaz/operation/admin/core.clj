@@ -1,8 +1,10 @@
 (ns irc.libera.chat.bayaz.operation.admin.core
   (:require [clojure.string :as string]
+            [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.db.core :as db.core]
             [irc.libera.chat.bayaz.util :as util]
-            [irc.libera.chat.bayaz.operation.util :as operation.util]))
+            [irc.libera.chat.bayaz.operation.util :as operation.util])
+  (:import [org.pircbotx PircBotX UserChannelDao]))
 
 (defn track-operation! [action admin-account who why]
   (let [who (clojure.string/lower-case who)
@@ -23,11 +25,14 @@
 
 (defmethod process! "warn"
   [op]
-  (let [[who & why] (:args op)]
-    ; TODO: Ensure who is in the channel
-    (track-operation! :admin/warn (:account op) who why)
-    (operation.util/message! (str "This is a warning, " who ". " (when-not (empty? why)
-                                                                   (string/join " " why))))))
+  (let [[who & why] (:args op)
+        ^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
+    (if-not (.containsUser user-channel-dao who)
+      (.respond (:event op) "Warn syntax is: !w <nick> [reason]")
+      (do
+        (track-operation! :admin/warn (:account op) who why)
+        (operation.util/message! (str "This is a warning, " who ". " (when-not (empty? why)
+                                                                       (string/join " " why))))))))
 
 (defmethod process! "quiet"
   [op]

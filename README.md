@@ -68,14 +68,14 @@
 ### Admin operations
 | Command   | Aliases   | Usage                   | Action                                            |
 |-----------|-----------|-------------------------|---------------------------------------------------|
-| `warn`    | `w`       | `!w <nick> [message]`   | Show a public warning to the nick.                |
+| `warn`    | `w`       | `!w <nick> [reason]`    | Show a public warning to the nick.                |
 | `quiet`   | `q`,`+q`  | `!q <target> [reason]`  | Set mode +q on the target.                        |
 | `unquiet` | `uq`,`-q` | `!uq <target> [reason]` | Set mode -q on the target.                        |
 | `ban`     | `b`,`+b`  | `!b <target> [reason]`  | Set mode +b on the target.                        |
 | `unban`   | `ub`,`-b` | `!ub <target> [reason]` | Set mode -b on the target.                        |
 | `kick`    | `k`       | `!k <nick> [reason]`    | Remove the nick from the channel.                 |
 | `kickban` | `kb`      | `!kb <nick> [reason]`   | Remove the nick from the channel and set mode +b. |
-| `history` | `h`       | `!h <nick>`            | Output the admin history for a nick.              |
+| `history` | `h`       | `!h <nick>`             | Output the admin history for a nick.              |
 
 ## TODO
 * This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492

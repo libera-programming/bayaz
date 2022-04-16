@@ -200,14 +200,14 @@
                             who))))
 
 (defn message! [& args]
-  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         message (string/join " " args)]
     (-> (.send channel)
         (.message message))))
 
 (defn action! [& args]
-  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         action (string/join " " args)]
     (-> (.send channel)
@@ -218,7 +218,7 @@
   sequence of any valid user identifier and `modes` should be the modes to set,
   prefixed with + or - as necessary."
   [modes & who]
-  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         ; TODO: This could be optimized to not resolve the same user more than once.
         new-modes (clojure.string/join " " (cons modes (map resolve-account! who)))]
@@ -229,7 +229,7 @@
   "Kicks a user from the primary channel. Note that `who` has to be a nick in order for this
   to work."
   [^String who]
-  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))]
     (when-some [user (.getUser user-channel-dao who)]
       (-> (.send channel)
