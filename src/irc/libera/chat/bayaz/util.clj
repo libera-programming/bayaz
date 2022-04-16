@@ -80,7 +80,7 @@
                            (mod remaining 31557600000))
 
                     2629800000
-                    (recur (conj result (str (int (/ remaining 2629800000)) " months"))
+                    (recur (conj result (str (int (/ remaining 2629800000)) "mo"))
                            (mod remaining 2629800000))
 
                     86400000
