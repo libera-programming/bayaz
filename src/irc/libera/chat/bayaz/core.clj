@@ -40,7 +40,8 @@
       (let [from-admin? (admin? account)
             operation (-> (operation.util/message->operation message)
                           (assoc :type message-type
-                                 :event event)
+                                 :event event
+                                 :account account)
                           (merge (when (= :public message-type)
                                    {:channel (.getName (.getChannel event))}))
                           operation.util/normalize-command)

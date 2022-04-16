@@ -20,12 +20,20 @@
                                                (make-prefixes "unban" "ub" "-b")
                                                (make-prefixes "kickban" "kb")
                                                (make-prefixes "kick" "k")
+                                               (make-prefixes "history" "h")
 
                                                ; TODO: Differentiate between admin/public commands.
                                                ; Public
                                                (make-prefixes "bayaz")
                                                (make-prefixes "ops"))))
   (def commands (delay (into #{} (vals @prefixed-command->command)))))
+
+(def admin-action->str {:admin/ban "Ban"
+                        :admin/unban "Unban"
+                        :admin/quiet "Quiet"
+                        :admin/unquiet "Unquiet"
+                        :admin/warn "Warn"
+                        :admin/kick "Kick"})
 
 (defn message->operation [message]
   ; TODO: Strip color codes.
@@ -88,6 +96,11 @@
       (let [[v _port] (async/alts! [pending-whois timeout-chan] :priority true)]
         v))))
 
+(def select-most-recent (comp first #(sort (fn [l r]
+                                             ; We assume ?when is last.
+                                             (compare (last r) (last l)))
+                                           %)))
+
 (defn resolve-account!
   "Resolves an identifier to the most useful incarnation. These identifiers match three cases:
 
@@ -102,26 +115,22 @@
   (let [who (clojure.string/lower-case who)
         ; A nick associated with multiple hostnames or accounts will always
         ; resolve to the most recent.
-        select-most-recent (comp first #(sort (fn [l r]
-                                                ; We assume ?when is last.
-                                                (compare (last r) (last l)))
-                                              %))
-        [hostname-entity hostname] (-> (db.core/query! '[:find ?h ?hostname ?when
-                                                         :in $ ?nick
-                                                         :where
-                                                         [?h :user/hostname ?hostname]
-                                                         [?n :user/hostname-ref ?h]
-                                                         [?n :time/when ?when]
-                                                         [?n :user/nick-association ?nick]]
-                                                       who)
-                                       select-most-recent)
+        [hostname-ref hostname] (-> (db.core/query! '[:find ?h ?hostname ?when
+                                                      :in $ ?nick
+                                                      :where
+                                                      [?h :user/hostname ?hostname]
+                                                      [?n :user/hostname-ref ?h]
+                                                      [?n :time/when ?when]
+                                                      [?n :user/nick-association ?nick]]
+                                                    who)
+                                    select-most-recent)
         [account] (-> (db.core/query! '[:find ?account ?when
                                         :in $ ?h
                                         :where
                                         [?a :user/hostname-ref ?h]
                                         [?a :time/when ?when]
                                         [?a :user/account-association ?account]]
-                                      hostname-entity)
+                                      hostname-ref)
                       select-most-recent)]
     (cond
       (some? account)
@@ -133,6 +142,69 @@
       ; Assume it's a hostmask.
       :else
       who)))
+
+(defn hostmask? [who]
+  (clojure.string/includes? who "@"))
+
+(defn extended-hostmask? [who]
+  (clojure.string/starts-with? who "$a:"))
+
+(defn account->hostname! [account]
+  (-> (db.core/query! '[:find ?h ?hostname ?when
+                        :in $ ?account
+                        :where
+                        [?h :user/hostname ?hostname]
+                        [?a :user/hostname-ref ?h]
+                        [?a :time/when ?when]
+                        [?a :user/account-association ?account]]
+                      account)
+      select-most-recent))
+
+(defn nick->hostname! [nick]
+  (-> (db.core/query! '[:find ?h ?hostname ?when
+                        :in $ ?nick
+                        :where
+                        [?h :user/hostname ?hostname]
+                        [?n :user/hostname-ref ?h]
+                        [?n :time/when ?when]
+                        [?n :user/nick-association ?nick]]
+                      nick)
+      select-most-recent))
+
+(defn resolve-hostname!
+  "Resolves an identifier to a hostname-ref/hostname pair. The identifiers match these cases:
+
+  1. A nick
+  2. A hostname
+  3. A hostmask
+  4. An extended $a:foo hostmask"
+  [^String who]
+  (let [who (clojure.string/lower-case who)
+        ; If we're given a hostmask, resolve it to a hostname.
+        who (if (hostmask? who)
+              (last (clojure.string/split who #"@"))
+              who)
+        ; If w'ere given an $a:foo account, resolve it to the account.
+        [who account?] (if (extended-hostmask? who)
+                         [(last (clojure.string/split who #":")) true]
+                         [who false])
+        [hostname-ref hostname] (if account?
+                                  (account->hostname! who)
+                                  (nick->hostname! who))]
+    (if (some? hostname-ref)
+      [hostname-ref hostname]
+      (db.core/query-first! '[:find ?h ?hostname
+                              :in $ ?hostname
+                              :where
+                              [?h :user/hostname ?hostname]]
+                            who))))
+
+(defn message! [& args]
+  (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
+        message (string/join " " args)]
+    (-> (.send channel)
+        (.message message))))
 
 (defn action! [& args]
   (let [user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)

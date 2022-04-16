@@ -13,17 +13,18 @@
   - [X] Granular feature flags to enable/disable specific functionality
 - [X] Moderation
   - [ ] Admin registration/maintenance
-  - [X] Help output
   - [X] Admins list output
   - [X] Quiet/unquiet
-    - [ ] Store reason
+    - [X] Store reason
   - [X] Ban/unban
-    - [ ] Store reason
+    - [X] Store reason
   - [X] Kickban
-    - [ ] Store reason
+    - [X] Store reason
   - [X] Kick
-    - [ ] Store reason
+    - [X] Store reason
   - [X] Warn
+    - [X] Store reason
+  - [X] Admin history view for each nick
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
   - [ ] Nick/host status lookup (ban/quiet)
@@ -65,15 +66,16 @@
 | `ops`   |         | `!ops`   | Output a list of channel ops.        |
 
 ### Admin operations
-| Command   | Aliases   | Usage               | Action                                                       |
-|-----------|-----------|---------------------|--------------------------------------------------------------|
-| `warn`    | `w`       | `!warn <nick>`      | Show a public warning to the nick, with an optional message. |
-| `quiet`   | `q`,`+q`  | `!quiet <target>`   | Set mode +q on the target.                                   |
-| `unquiet` | `uq`,`-q` | `!unquiet <target>` | Set mode -q on the target.                                   |
-| `ban`     | `b`,`+b`  | `!ban <target>`     | Set mode +b on the target.                                   |
-| `unban`   | `ub`,`-b` | `!unban <target>`   | Set mode -b on the target.                                   |
-| `kick`    | `k`       | `!kick <nick>`      | Remove the nick from the channel.                            |
-| `kickban` | `kb`      | `!kickban <nick>`   | Remove the nick from the channel and set mode +b.            |
+| Command   | Aliases   | Usage                   | Action                                            |
+|-----------|-----------|-------------------------|---------------------------------------------------|
+| `warn`    | `w`       | `!w <nick> [message]`   | Show a public warning to the nick.                |
+| `quiet`   | `q`,`+q`  | `!q <target> [reason]`  | Set mode +q on the target.                        |
+| `unquiet` | `uq`,`-q` | `!uq <target> [reason]` | Set mode -q on the target.                        |
+| `ban`     | `b`,`+b`  | `!b <target> [reason]`  | Set mode +b on the target.                        |
+| `unban`   | `ub`,`-b` | `!ub <target> [reason]` | Set mode -b on the target.                        |
+| `kick`    | `k`       | `!k <nick> [reason]`    | Remove the nick from the channel.                 |
+| `kickban` | `kb`      | `!kb <nick> [reason]`   | Remove the nick from the channel and set mode +b. |
+| `history` | `h`       | `!h <nick>`            | Output the admin history for a nick.              |
 
 ## TODO
 * This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492

@@ -18,3 +18,12 @@
   (t/is (= "57.0 PB" (util/size->human-readable (* 57 1000 1000 1000 1000 1000))))
   (t/is (= "1.0 EB" (util/size->human-readable (*' 1000 1000 1000 1000 1000 1000))))
   (t/is (= "57.0 EB" (util/size->human-readable (*' 57 1000 1000 1000 1000 1000 1000)))))
+
+(t/deftest relative-time-offset
+  (t/is (= "just now" (util/relative-time-offset 0 0)))
+  (t/is (= "just now" (util/relative-time-offset 999 0)))
+  (t/is (= "1m 12s ago" (util/relative-time-offset (* 1.2 60000) 0)))
+  (t/is (= "1d 4h ago" (util/relative-time-offset (* 1.2 86400000) 0)))
+  (t/is (= "11 months 30d ago" (util/relative-time-offset (dec 31557600000) 0)))
+  (t/is (= "3y 6 months ago" (util/relative-time-offset (* 3.5 31557600000) 0)))
+  (t/is (= "3y 6 months from now" (util/relative-time-offset 0 (* 3.5 31557600000)))))

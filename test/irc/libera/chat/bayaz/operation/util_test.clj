@@ -1,5 +1,8 @@
 (ns irc.libera.chat.bayaz.operation.util-test
   (:require [clojure.test :as t]
+            [clojure.string]
+            [matcher-combinators.test]
+            [matcher-combinators.matchers :as m]
             [datalevin.core :as datalevin]
             [irc.libera.chat.bayaz.db.core :as db.core]
             [irc.libera.chat.bayaz.track.core :as track.core]
@@ -32,6 +35,9 @@
       (track.core/track-user! user 0)
       (t/is (= (str "$a:" account) (operation.util/resolve-account! nick))))
 
+    (t/testing "Case insensitive"
+      (t/is (= (str "$a:" account) (operation.util/resolve-account! (clojure.string/upper-case nick)))))
+
     (t/testing "Use latest account"
       (track.core/track-user! other-user 1)
       (t/is (= (str "$a:" other-account) (operation.util/resolve-account! nick)))
@@ -45,3 +51,21 @@
     (t/testing "Use latest hostname"
       (track.core/track-user! (assoc guest-user :hostname "other-guest-host") 1)
       (t/is (= "other-guest-host" (operation.util/resolve-account! guest-nick))))))
+
+(t/deftest resolve-hostname!
+  (with-redefs [db.core/connection (-> (datalevin/empty-db nil db.core/schema)
+                                       (datalevin/db-with db.core/txs)
+                                       datalevin/conn-from-db
+                                       delay)]
+    (track.core/track-user! user 0)
+    (t/testing "Hostmask"
+      (t/is (match? [int? hostname] (operation.util/resolve-hostname! (str "*!*@" hostname)))))
+
+    (t/testing "Hostname"
+      (t/is (match? [int? hostname] (operation.util/resolve-hostname! hostname))))
+
+    (t/testing "Nick"
+      (t/is (match? [int? hostname] (operation.util/resolve-hostname! nick))))
+
+    (t/testing "Extended hostmask"
+      (t/is (match? [int? hostname] (operation.util/resolve-hostname! (str "$a:" account)))))))

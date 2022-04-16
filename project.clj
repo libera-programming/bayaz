@@ -16,7 +16,8 @@
   :main ^:skip-aot irc.libera.chat.bayaz.core
   :global-vars {*warn-on-reflection* true}
   :target-path "target/%s"
-  :profiles {:dev {:env {:bayaz-db "dev-resources/db"}}
+  :profiles {:dev {:dependencies [[nubank/matcher-combinators "3.5.0"]]
+                   :env {:bayaz-db "dev-resources/db"}}
              :test {:test-refresh {:focus-flag :focus}}
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})

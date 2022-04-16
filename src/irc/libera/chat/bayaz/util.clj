@@ -1,6 +1,6 @@
 (ns irc.libera.chat.bayaz.util
-  (:import [clojure.core.async.impl.channels ManyToManyChannel]
-           [java.io InputStream ByteArrayOutputStream]
+  (:require [clojure.string])
+  (:import [java.io InputStream ByteArrayOutputStream]
            [java.text StringCharacterIterator]))
 
 (def max-message-length 256)
@@ -61,11 +61,47 @@
               (.write output-stream buffer 0 size)
               (recur new-total-size))))))))
 
-(defn chan? [v]
-  (instance? ManyToManyChannel v))
-
 (defn java-tags->clj-tags [java-tags]
   (->> java-tags
        (map (fn [[k v]]
               [(keyword k) v]))
-       (into {})) )
+       (into {})))
+
+(defn relative-time-offset [now timestamp]
+  (let [future? (> timestamp now)
+        diff (Math/abs (- now timestamp))
+        parts (loop [result []
+                     remaining diff]
+                (if (= 2 (count result))
+                  result
+                  (condp <= remaining
+                    31557600000
+                    (recur (conj result (str (int (/ remaining 31557600000)) "y"))
+                           (mod remaining 31557600000))
+
+                    2629800000
+                    (recur (conj result (str (int (/ remaining 2629800000)) " months"))
+                           (mod remaining 2629800000))
+
+                    86400000
+                    (recur (conj result (str (int (/ remaining 86400000)) "d"))
+                           (mod remaining 86400000))
+
+                    3600000
+                    (recur (conj result (str (int (/ remaining 3600000)) "h"))
+                           (mod remaining 3600000))
+
+                    60000
+                    (recur (conj result (str (int (/ remaining 60000)) "m"))
+                           (mod remaining 60000))
+
+                    1000
+                    (recur (conj result (str (int (/ remaining 1000)) "s"))
+                           (mod remaining 1000))
+
+                    result)))]
+    (if (empty? parts)
+      "just now"
+      (clojure.string/join " " (conj parts (if future?
+                                             "from now"
+                                             "ago"))))))
