@@ -19,7 +19,7 @@
             ServerResponseEvent NickChangeEvent]))
 
 (defn admin? [account]
-  (contains? (:admins @state/global-config) (string/lower-case account)))
+  (and (some? account) (contains? (:admins @state/global-config) (string/lower-case account))))
 
 (defn track-with-tags! [nick hostname tags timestamp]
   (send-off track.core/queue
@@ -52,7 +52,7 @@
           (not command?)
           (operation.public.core/process-message! operation)
 
-          not-handled-admin-op?
+          (or not-handled-admin-op? (= :public (:type operation)))
           (operation.public.core/process! operation))))))
 
 (defn process-whois! [^WhoisEvent event]
