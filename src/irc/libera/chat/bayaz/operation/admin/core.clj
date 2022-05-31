@@ -43,35 +43,35 @@
 (defmethod process! "unquiet"
   [op]
   (let [; TODO: Validate
-        [who] (:args op)]
-    (track-operation! :admin/unquiet (:account op) who "")
+        [who & why] (:args op)]
+    (track-operation! :admin/unquiet (:account op) who why)
     (operation.util/set-user-mode! "-q" who)))
 
 (defmethod process! "ban"
   [op]
   (let [; TODO: Validate this input.
-        [who why until] (:args op)]
+        [who & why] (:args op)]
     (track-operation! :admin/ban (:account op) who why)
     (operation.util/set-user-mode! "-q+b" who who)))
 
 (defmethod process! "unban"
   [op]
   (let [; TODO: Validate
-        [who] (:args op)]
-    (track-operation! :admin/unban (:account op) who "")
+        [who & why] (:args op)]
+    (track-operation! :admin/unban (:account op) who why)
     (operation.util/set-user-mode! "-b" who)))
 
 (defmethod process! "kickban"
   [op]
   (let [; TODO: Validate this input.
-        [who why until] (:args op)]
+        [who] (:args op)]
     (process! (assoc op :command "ban"))
     (operation.util/kick! who)))
 
 (defmethod process! "kick"
   [op]
   (let [; TODO: Validate this input.
-        [who why until] (:args op)]
+        [who & why] (:args op)]
     (track-operation! :admin/kick (:account op) who why)
     (operation.util/kick! who)))
 
@@ -122,5 +122,5 @@
       (.respondWith (:event op) footer))))
 
 (defmethod process! :default
-  [op]
+  [_op]
   :not-handled)

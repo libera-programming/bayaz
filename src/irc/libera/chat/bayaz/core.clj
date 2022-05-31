@@ -46,6 +46,7 @@
                                    {:channel (.getName (.getChannel event))}))
                           operation.util/normalize-command)
             command? (-> operation :command some?)
+            ; TODO: Is this needed, if we have the operation type on hand?
             not-handled-admin-op? (when (and from-admin? command? (state/feature-enabled? :admin))
                                     (= :not-handled (operation.admin.core/process! operation)))]
         (cond
