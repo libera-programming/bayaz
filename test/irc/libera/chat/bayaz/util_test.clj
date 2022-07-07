@@ -24,6 +24,7 @@
   (t/is (= "just now" (util/relative-time-offset 999 0)))
   (t/is (= "1m 12s ago" (util/relative-time-offset (* 1.2 60000) 0)))
   (t/is (= "1d 4h ago" (util/relative-time-offset (* 1.2 86400000) 0)))
+  (t/is (= "1mo 6d ago" (util/relative-time-offset (* 2 3155760000) 3155760000)))
   (t/is (= "11mo 30d ago" (util/relative-time-offset (dec 31557600000) 0)))
   (t/is (= "3y 6mo ago" (util/relative-time-offset (* 3.5 31557600000) 0)))
   (t/is (= "3y 6mo from now" (util/relative-time-offset 0 (* 3.5 31557600000)))))
