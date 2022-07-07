@@ -64,6 +64,7 @@
        (into {})))
 
 (defn relative-time-offset [now timestamp]
+  (println "relative-time-offset" now timestamp)
   (let [future? (> timestamp now)
         diff (Math/abs (- now timestamp))
         parts (loop [result []
