@@ -111,11 +111,12 @@
                       (util/relative-time-offset now (-> remaining-actions last :time/when))
                       "."))]
     (.respondWith (:event op)
-                  (if (empty? actions)
-                    (str "No admin operation history for " who)
-                    (str "Admin operation history for " who
-                         (when-not (or (= who hostname) (operation.util/hostmask? who))
-                           (str " (latest hostname " hostname ")")))))
+                  (str (if (empty? actions)
+                         "No admin operation history for "
+                         "Admin operation history for ")
+                       who
+                       (when-not (or (= who hostname) (operation.util/hostmask? who))
+                         (str " (latest hostname " hostname ")"))))
     (doseq [r response]
       (.respondWith (:event op) r))
     (when (some? footer)
