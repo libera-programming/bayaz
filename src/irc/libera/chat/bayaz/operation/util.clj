@@ -21,6 +21,8 @@
                                                (make-prefixes "kickban" "kb")
                                                (make-prefixes "kick" "k")
                                                (make-prefixes "history" "h")
+                                               (make-prefixes "whois" "who")
+                                               (make-prefixes "deepwhois" "dwho")
 
                                                ; TODO: Differentiate between admin/public commands.
                                                ; Public
@@ -149,27 +151,27 @@
 (defn extended-hostmask? [who]
   (clojure.string/starts-with? who "$a:"))
 
-(defn account->hostname! [account]
-  (-> (db.core/query! '[:find ?h ?hostname ?when
-                        :in $ ?account
-                        :where
-                        [?h :user/hostname ?hostname]
-                        [?a :user/hostname-ref ?h]
-                        [?a :time/when ?when]
-                        [?a :user/account-association ?account]]
-                      account)
-      select-most-recent))
+(defn account->hostnames! [account]
+  (db.core/query! '[:find ?h ?hostname ?when
+                    :in $ ?account
+                    :where
+                    [?h :user/hostname ?hostname]
+                    [?a :user/hostname-ref ?h]
+                    [?a :time/when ?when]
+                    [?a :user/account-association ?account]]
+                  account))
+(def account->hostname! (comp select-most-recent account->hostnames!))
 
-(defn nick->hostname! [nick]
-  (-> (db.core/query! '[:find ?h ?hostname ?when
-                        :in $ ?nick
-                        :where
-                        [?h :user/hostname ?hostname]
-                        [?n :user/hostname-ref ?h]
-                        [?n :time/when ?when]
-                        [?n :user/nick-association ?nick]]
-                      nick)
-      select-most-recent))
+(defn nick->hostnames! [nick]
+  (db.core/query! '[:find ?h ?hostname ?when
+                    :in $ ?nick
+                    :where
+                    [?h :user/hostname ?hostname]
+                    [?n :user/hostname-ref ?h]
+                    [?n :time/when ?when]
+                    [?n :user/nick-association ?nick]]
+                  nick))
+(def nick->hostname! (comp select-most-recent nick->hostnames!))
 
 (defn resolve-hostname!
   "Resolves an identifier to a hostname-ref/hostname pair. The identifiers match these cases:
@@ -184,7 +186,7 @@
         who (if (hostmask? who)
               (last (clojure.string/split who #"@"))
               who)
-        ; If w'ere given an $a:foo account, resolve it to the account.
+        ; If we're given a $a:foo account, resolve it to the account.
         [who account?] (if (extended-hostmask? who)
                          [(last (clojure.string/split who #":")) true]
                          [who false])

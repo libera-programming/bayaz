@@ -30,7 +30,7 @@
   - [ ] Nick/host status lookup (ban/quiet)
   - [X] Host/nick tracking
     - [X] Use tracking db for admin operations
-    - [ ] Query common hosts and nicks by pattern
+    - [X] Nick/account/hostname queries using tracking db
   - [ ] +m mode (channel gets +m, ops get +o, everyone gets +v; we can then manually -v people)
   - [X] `!ops` command to ping all admins
   - [ ] Spam detection
@@ -76,6 +76,8 @@
 | `kick`    | `k`       | `!k <nick> [reason]`    | Remove the nick from the channel.                 |
 | `kickban` | `kb`      | `!kb <nick> [reason]`   | Remove the nick from the channel and set mode +b. |
 | `history` | `h`       | `!h <nick>`             | Output the admin history for a nick.              |
+| `whois` | `who`       | `!who <target>`             | Fetch all nicks and accounts used by the latest hostname for the target.              |
+| `deepwhois` | `dwho`       | `!dwho <target>`             | Fetch all nicks, accounts, and hostnames related to the target. Results go to a gist.              |
 
 ## TODO
 * This title doesn't render properly: https://access.redhat.com/security/cve/cve-2022-0492
