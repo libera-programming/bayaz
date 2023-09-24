@@ -69,6 +69,7 @@
 | Command   | Aliases   | Usage                   | Action                                            |
 |-----------|-----------|-------------------------|---------------------------------------------------|
 | `warn`    | `w`       | `!w <nick> [reason]`    | Show a public warning to the nick.                |
+| `warnall`    | `wa`       | `!wa [reason]`    | Show a public warning to the channel.                |
 | `quiet`   | `q`,`+q`  | `!q <target> [reason]`  | Set mode +q on the target.                        |
 | `unquiet` | `uq`,`-q` | `!uq <target> [reason]` | Set mode -q on the target.                        |
 | `ban`     | `b`,`+b`  | `!b <target> [reason]`  | Set mode +b on the target.                        |

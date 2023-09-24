@@ -38,6 +38,12 @@
         (operation.util/message! (str "This is a warning, " who ". " (when-not (empty? why)
                                                                        (string/join " " why))))))))
 
+(defmethod process! "warnall"
+  [op]
+  (let [[& why] (:args op)]
+    (operation.util/message! (str "Everyone, this is a warning. " (when-not (empty? why)
+                                                                    (string/join " " why))))))
+
 (defmethod process! "quiet"
   [op]
   (let [[who & why] (:args op)]

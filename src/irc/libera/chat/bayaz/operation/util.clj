@@ -14,6 +14,7 @@
   ; in public channels without a bot mention, since they're meant to be distinct. Full
   ; forms can also be used, but only with a mention or via DM.
   (def prefixed-command->command (delay (merge (make-prefixes "warn" "w")
+                                               (make-prefixes "warnall" "wa")
                                                (make-prefixes "quiet" "q" "+q")
                                                (make-prefixes "unquiet" "uq" "-q")
                                                (make-prefixes "ban" "b" "+b")
