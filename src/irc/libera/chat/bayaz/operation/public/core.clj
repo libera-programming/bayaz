@@ -95,7 +95,10 @@
                           reaver/text))]
           (when (some? title)
             {:status (:status response)
-             :title title}))
+             ; Some sites have multiple titles.
+             :title (if (seq? title)
+                      (first title)
+                      title)}))
         (catch Exception _
           nil)))))
 (def fetch-url! (memo/ttl fetch-url!* {} :ttl/threshold (* 60 1000))); ms
