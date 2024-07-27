@@ -13,7 +13,7 @@
         hostname (clojure.string/lower-case hostname)
         account (when (some? account)
                   (clojure.string/lower-case account))
-        _ (println "track user" hostname nick account)
+        ;_ (println "track user" hostname nick account)
         _ (db.core/transact! [{:db/id -1
                                :user/hostname hostname}])
         [existing-hostname] (db.core/query-first! '[:find ?h

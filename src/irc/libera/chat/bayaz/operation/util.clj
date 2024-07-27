@@ -225,6 +225,9 @@
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         ; TODO: This could be optimized to not resolve the same user more than once.
         new-modes (clojure.string/join " " (cons modes (map resolve-account! who)))]
+    (println "set-user-mode" (pr-str {:who who
+                                      :modes modes
+                                      :new-modes new-modes}))
     (-> (.send channel)
         (.setMode new-modes))))
 
