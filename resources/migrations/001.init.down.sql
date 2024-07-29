@@ -1,4 +1,3 @@
-drop extension if exists pg_stat_statements;
 drop index if exists admin_action_target_id_index;
 drop table if exists admin_action;
 drop type if exists admin_action_type;

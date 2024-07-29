@@ -45,6 +45,3 @@ create table admin_action
   seen bigint not null
 );
 create index admin_action_target_id_index on admin_action (target_id);
-
-/* For inspecting various stats about our usage. */
-create extension pg_stat_statements;
