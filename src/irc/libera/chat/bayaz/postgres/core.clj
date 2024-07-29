@@ -2,12 +2,13 @@
   (:require [pg.pool :as pgp]
             [pg.honey :as pgh]
             [pg.migration.core :as pgm]
-            [environ.core :refer [env]]))
+            [environ.core :refer [env]]
+            [irc.libera.chat.bayaz.state :as state]))
 
 (def config {:host "127.0.0.1"
              :port 5432
-             :user (:user env)
-             :password (:bayaz-db-pass env "")
+             :user (:postgres-user @state/global-config (:user env))
+             :password (:postgres-pass @state/global-config "")
              :database "bayaz"
              :migrations-table :migrations
              :migrations-path "migrations"})
