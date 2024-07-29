@@ -1,10 +1,12 @@
 (ns irc.libera.chat.bayaz.operation.admin.core
   (:require [clojure.string :as string]
             [clojure.data.json :as json]
-            [medley.core :refer [distinct-by]]
             [clj-http.client :as http]
+            [honey.sql :as sql]
+            [honey.sql.helpers :refer [select from where limit order-by join
+                                       insert-into values on-conflict do-update-set returning]]
             [irc.libera.chat.bayaz.state :as state]
-            [irc.libera.chat.bayaz.db.core :as db.core]
+            [irc.libera.chat.bayaz.postgres.core :as postgres.core]
             [irc.libera.chat.bayaz.util :as util]
             [irc.libera.chat.bayaz.operation.util :as operation.util]
             [irc.libera.chat.bayaz.track.core :as track.core])
@@ -13,15 +15,27 @@
 (defn track-operation! [action admin-account who why]
   (let [who (clojure.string/lower-case who)
         why (clojure.string/join " " why)
-        [hostname-ref] (operation.util/resolve-hostname! who)]
-    (when (some? hostname-ref)
-      (db.core/transact! [(merge {:db/id -1
-                                  :user/hostname-ref hostname-ref
-                                  :admin/account admin-account
-                                  :admin/action action
-                                  :time/when (System/currentTimeMillis)}
-                                 (when (some? why)
-                                   {:admin/reason why}))]))))
+        [hostname-ref] (track.core/resolve-hostname! who)]
+    (if (some? hostname-ref)
+      (postgres.core/execute! (-> (insert-into :admin_action)
+                                  (values [{:target_id hostname-ref
+                                            :admin_account admin-account
+                                            :action (name action)
+                                            :reason why
+                                            :seen (System/currentTimeMillis)}])))
+      (println "error: no hostname ref while tracking admin action"
+               {:action action
+                :admin admin-account
+                :who who
+                :why why}))))
+
+(def max-history-lines 5)
+
+(defn find-admin-actions-for-hostname-ref! [hostname-ref]
+  (postgres.core/execute! (-> (select :*)
+                              (from :admin_action)
+                              (where [:= :target_id hostname-ref])
+                              (order-by [:seen :desc]))))
 
 (defmulti process!
   (fn [op]
@@ -85,47 +99,36 @@
     (track-operation! :admin/kick (:account op) who why)
     (operation.util/kick! who)))
 
-(def max-history-lines 5)
-
 (defmethod process! "history"
   [op]
   (let [[who] (:args op)
         who (clojure.string/lower-case who)
-        [hostname-ref hostname] (operation.util/resolve-hostname! who)
-        ; TODO: Optimize by limiting query; couldn't make it work with datalevin.
-        actions (->> (db.core/query! '[:find [(pull ?a [*]) ...]
-                                       :in $ ?hostname-ref
-                                       :where
-                                       [?a :user/hostname-ref ?hostname-ref]
-                                       [?a :admin/action]]
-                                     hostname-ref)
-                     (sort-by :time/when #(compare %2 %1)))
+        [hostname-ref hostname] (track.core/resolve-hostname! who)
+        actions (find-admin-actions-for-hostname-ref! hostname-ref)
         now (System/currentTimeMillis)
         response (->> (take max-history-lines actions)
                       (map (fn [action]
                              ; 3d ago - Ban from jeaye: Spamming
-                             (str (util/relative-time-offset now (:time/when action))
+                             (str (util/relative-time-offset now (:seen action))
                                   " - "
-                                  (-> (db.core/entity (-> action :admin/action :db/id))
-                                      :db/ident
-                                      operation.util/admin-action->str)
+                                  (-> action :action operation.util/admin-action->str)
                                   " from "
-                                  (:admin/account action)
-                                  (when-not (empty? (:admin/reason action))
-                                    (str ": " (:admin/reason action)))))))
+                                  (:admin_account action)
+                                  (when-not (empty? (:reason action))
+                                    (str ": " (:reason action)))))))
         remaining-actions (drop max-history-lines actions)
         footer (when-not (empty? remaining-actions)
                  (str "Not showing "
                       (count remaining-actions)
                       " action(s) going back to "
-                      (util/relative-time-offset now (-> remaining-actions last :time/when))
+                      (util/relative-time-offset now (-> remaining-actions last :seen))
                       "."))]
     (.respondWith (:event op)
                   (str (if (empty? actions)
                          "No admin operation history for "
                          "Admin operation history for ")
                        who
-                       (when-not (or (= who hostname) (operation.util/hostmask? who))
+                       (when-not (or (= who hostname) (track.core/hostmask? who))
                          (str " (latest hostname " hostname ")"))))
     (doseq [r response]
       (.respondWith (:event op) r))
@@ -136,47 +139,32 @@
   [op]
   (let [[who] (:args op)
         who (clojure.string/lower-case who)
-        [hostname-ref hostname] (operation.util/resolve-hostname! who)
-        ; TODO: Optimize by limiting query; couldn't make it work with datalevin.
-        nicks (db.core/query! '[:find [(pull ?a [*]) ...]
-                                :in $ ?hostname-ref
-                                :where
-                                [?a :user/hostname-ref ?hostname-ref]
-                                [?a :user/nick-association ?nick]]
-                              hostname-ref)
-        accounts (db.core/query! '[:find [(pull ?a [*]) ...]
-                                   :in $ ?hostname-ref
-                                   :where
-                                   [?a :user/hostname-ref ?hostname-ref]
-                                   [?a :user/account-association ?account]]
-                                 hostname-ref)
-        combined (track.core/collapse-whois-results (lazy-cat nicks accounts))
-        _ (clojure.pprint/pprint combined)
-        actions (sort-by :time/when #(compare %2 %1) combined)
+        [hostname-ref hostname] (track.core/resolve-hostname! who)
+        associations (track.core/whois! hostname-ref)
         now (System/currentTimeMillis)
-        response (->> actions ;(take max-history-lines actions)
-                      (map (fn [action]
+        response (->> (take max-history-lines associations)
+                      (map (fn [association]
                              ; 3d ago - Last use nick foo with account bar
-                             (str (util/relative-time-offset now (:time/when action))
+                             (str (util/relative-time-offset now (:last_seen association))
                                   " - Last used "
-                                  (if-some [nick (:user/nick-association action)]
+                                  (if-some [nick (:nick association)]
                                     (str "nick " nick
-                                         (if-some [account (:user/account-association action)]
+                                         (if-some [account (:account association)]
                                            (str " with account " account)))
-                                    (str "account " (:user/account-association action)))))))
-        remaining-actions (drop max-history-lines actions)
-        footer (when-not (empty? remaining-actions)
+                                    (str "account " (:account association)))))))
+        remaining (drop max-history-lines associations)
+        footer (when-not (empty? remaining)
                  (str "Not showing "
-                      (count remaining-actions)
+                      (count remaining)
                       " action(s) going back to "
-                      (util/relative-time-offset now (-> remaining-actions last :time/when))
+                      (util/relative-time-offset now (-> remaining last :last_seen))
                       "."))]
     (.respondWith (:event op)
-                  (str (if (empty? actions)
+                  (str (if (empty? associations)
                          "No tracking history for "
                          "Tracking history for ")
                        who
-                       (when-not (or (= who hostname) (operation.util/hostmask? who))
+                       (when-not (or (= who hostname) (track.core/hostmask? who))
                          (str " (latest hostname " hostname ")"))))
     (doseq [r response]
       (.respondWith (:event op) r))
@@ -187,19 +175,18 @@
   [op]
   (let [[who] (:args op)
         _ (.respondWith (:event op) (str "Running deep whois on " who ". This can take a while..."))
-        results (->> (track.core/deep-whois! who)
-                     track.core/collapse-whois-results
-                     (sort-by :time/when #(compare %2 %1)))
+        results (track.core/deep-whois! who)
         now (System/currentTimeMillis)
         response (->> results
-                      (map (fn [action]
-                             (str "|" (:user/hostname action)
-                                  "|" (:user/nick-association action)
-                                  "|" (:user/account-association action)
-                                  "|" (util/relative-time-offset now (:time/when action))
+                      (map (fn [association]
+                             (str "|" (:hostname association)
+                                  "|" (:nick association)
+                                  "|" (:account association)
+                                  "|" (util/relative-time-offset now (:first_seen association))
+                                  "|" (util/relative-time-offset now (:last_seen association))
                                   "|"))))
-        markdown (str "|Hostname|Nick|Account|Time|\n"
-                      "|---|---|---|---|\n"
+        markdown (str "|Hostname|Nick|Account|First Time|Last Time|\n"
+                      "|---|---|---|---|---|\n"
                       (clojure.string/join "\n" response))
         http-opts {:throw-exceptions false
                    :ignore-unknown-host? true
@@ -211,8 +198,8 @@
                    :headers {"X-GitHub-Api-Version" "2022-11-28"
                              "Authorization" (str "Bearer " (:gitlab-token @state/global-config))}
                    :body (json/write-str {:public false
-                                          :description (str "bayaz !deepwhois " who)
-                                          :files {"bayaz-deepwhois.md" {:content markdown}}})}
+                                          :description (str "!deepwhois " who)
+                                          :files {"deepwhois.md" {:content markdown}}})}
         gist-result (http/post "https://api.github.com/gists" http-opts)
         error? (not= 201 (:status gist-result))]
     (if error?

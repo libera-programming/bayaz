@@ -5,7 +5,7 @@
             [clojure.core.async :as async]
             [irc.libera.chat.bayaz.util :as util]
             [irc.libera.chat.bayaz.state :as state]
-            [irc.libera.chat.bayaz.db.core :as db.core]
+            [irc.libera.chat.bayaz.postgres.core :as postgres.core]
             [irc.libera.chat.bayaz.track.core :as track.core]
             [irc.libera.chat.bayaz.operation.admin.core :as operation.admin.core]
             [irc.libera.chat.bayaz.operation.public.core :as operation.public.core]
@@ -29,32 +29,35 @@
                                       timestamp))))
 
 (defn process-message! [^User user message message-type event]
-  (let [account (-> event .getTags util/java-tags->clj-tags :account)]
-    (track-with-tags! (.getNick user)
-                      (-> event .getUserHostmask .getHostname)
-                      (-> event .getTags util/java-tags->clj-tags)
-                      (.getTimestamp event))
+  (try
+    (let [account (-> event .getTags util/java-tags->clj-tags :account)]
+      (track-with-tags! (.getNick user)
+                        (-> event .getUserHostmask .getHostname)
+                        (-> event .getTags util/java-tags->clj-tags)
+                        (.getTimestamp event))
 
-    ; TODO: Test this check.
-    (when-not (= (.getUserBot ^PircBotX @state/bot) user)
-      (let [from-admin? (admin? account)
-            operation (-> (operation.util/message->operation message)
-                          (assoc :type message-type
-                                 :event event
-                                 :account account)
-                          (merge (when (= :public message-type)
-                                   {:channel (.getName (.getChannel event))}))
-                          operation.util/normalize-command)
-            command? (-> operation :command some?)
-            ; TODO: Is this needed, if we have the operation type on hand?
-            not-handled-admin-op? (when (and from-admin? command? (state/feature-enabled? :admin))
-                                    (= :not-handled (operation.admin.core/process! operation)))]
-        (cond
-          (not command?)
-          (operation.public.core/process-message! operation)
+      ; TODO: Test this check.
+      (when-not (= (.getUserBot ^PircBotX @state/bot) user)
+        (let [from-admin? (admin? account)
+              operation (-> (operation.util/message->operation message)
+                            (assoc :type message-type
+                                   :event event
+                                   :account account)
+                            (merge (when (= :public message-type)
+                                     {:channel (.getName (.getChannel event))}))
+                            operation.util/normalize-command)
+              command? (-> operation :command some?)
+              ; TODO: Is this needed, if we have the operation type on hand?
+              not-handled-admin-op? (when (and from-admin? command? (state/feature-enabled? :admin))
+                                      (= :not-handled (operation.admin.core/process! operation)))]
+          (cond
+            (not command?)
+            (operation.public.core/process-message! operation)
 
-          (or not-handled-admin-op? (= :public (:type operation)))
-          (operation.public.core/process! operation))))))
+            (or not-handled-admin-op? (= :public (:type operation)))
+            (operation.public.core/process! operation)))))
+    (catch Throwable e
+      (println "exception thrown:" e))))
 
 (defn process-whois! [^WhoisEvent event]
   ; There's probably an operation waiting for the result of a whois request, so deliver
@@ -108,6 +111,7 @@
                     (-> event .getTags util/java-tags->clj-tags)
                     (.getTimestamp event)))
 
+; TODO: This is never being triggered.
 (defn process-nick-change! [^NickChangeEvent event]
   (println "process nick change"
            (-> event .getChannel .getName)
@@ -181,12 +185,12 @@
                        (.setOnJoinWhoEnabled false)
                        .buildConfiguration)]
     (reset! state/bot (PircBotX. bot-config))
-    (db.core/connect!)
+    (postgres.core/connect!)
     (future (.startBot ^PircBotX @state/bot))))
 
 (defn stop! []
   (try
-    (db.core/disconnect!)
+    (postgres.core/disconnect!)
     (when-some [^PircBotX bot @state/bot]
       (.stopBotReconnect bot)
       (.quitServer (.sendIRC bot) (:quit-message @state/global-config))

@@ -2,7 +2,7 @@
   (:require [clojure.string :as string]
             [clojure.core.async :as async]
             [irc.libera.chat.bayaz.state :as state]
-            [irc.libera.chat.bayaz.db.core :as db.core])
+            [irc.libera.chat.bayaz.track.core :as track.core])
   (:import [org.pircbotx PircBotX User UserChannelDao]))
 
 (let [make-prefixes (fn [command & prefixes]
@@ -31,12 +31,12 @@
                                                (make-prefixes "ops"))))
   (def commands (delay (into #{} (vals @prefixed-command->command)))))
 
-(def admin-action->str {:admin/ban "Ban"
-                        :admin/unban "Unban"
-                        :admin/quiet "Quiet"
-                        :admin/unquiet "Unquiet"
-                        :admin/warn "Warn"
-                        :admin/kick "Kick"})
+(def admin-action->str {"ban" "Ban"
+                        "unban" "Unban"
+                        "quiet" "Quiet"
+                        "unquiet" "Unquiet"
+                        "warn" "Warn"
+                        "kick" "Kick"})
 
 (defn message->operation [message]
   ; TODO: Strip color codes.
@@ -99,109 +99,6 @@
       (let [[v _port] (async/alts! [pending-whois timeout-chan] :priority true)]
         v))))
 
-(def select-most-recent (comp first #(sort (fn [l r]
-                                             ; We assume ?when is last.
-                                             (compare (last r) (last l)))
-                                           %)))
-
-(defn resolve-account!
-  "Resolves an identifier to the most useful incarnation. These identifiers match three cases:
-
-  1. The nick of a registered user
-  2. The nick of an unregistered user
-  3. A hostmask
-
-  The first case is resolved to an account specifier, to cover all clients logged into that
-  account, as well as name changes. The second case is resolved into a hostmask which covers
-  all users and nicks from that host. The third is passed through unchanged."
-  [^String who]
-  (let [who (clojure.string/lower-case who)
-        ; A nick associated with multiple hostnames or accounts will always
-        ; resolve to the most recent.
-        [hostname-ref hostname] (-> (db.core/query! '[:find ?h ?hostname ?when
-                                                      :in $ ?nick
-                                                      :where
-                                                      [?h :user/hostname ?hostname]
-                                                      [?n :user/hostname-ref ?h]
-                                                      [?n :time/when ?when]
-                                                      [?n :user/nick-association ?nick]]
-                                                    who)
-                                    select-most-recent)
-        [account] (-> (db.core/query! '[:find ?account ?when
-                                        :in $ ?h
-                                        :where
-                                        [?a :user/hostname-ref ?h]
-                                        [?a :time/when ?when]
-                                        [?a :user/account-association ?account]]
-                                      hostname-ref)
-                      select-most-recent)]
-    (cond
-      (some? account)
-      (str "$a:" account)
-
-      (some? hostname)
-      hostname
-
-      ; Assume it's a hostmask.
-      :else
-      who)))
-
-(defn hostmask? [who]
-  (clojure.string/includes? who "@"))
-
-(defn extended-hostmask? [who]
-  (clojure.string/starts-with? who "$a:"))
-
-(defn account->hostnames! [account]
-  (db.core/query! '[:find ?h ?hostname ?when
-                    :in $ ?account
-                    :where
-                    [?h :user/hostname ?hostname]
-                    [?a :user/hostname-ref ?h]
-                    [?a :time/when ?when]
-                    [?a :user/account-association ?account]]
-                  account))
-(def account->hostname! (comp select-most-recent account->hostnames!))
-
-(defn nick->hostnames! [nick]
-  (db.core/query! '[:find ?h ?hostname ?when
-                    :in $ ?nick
-                    :where
-                    [?h :user/hostname ?hostname]
-                    [?n :user/hostname-ref ?h]
-                    [?n :time/when ?when]
-                    [?n :user/nick-association ?nick]]
-                  nick))
-(def nick->hostname! (comp select-most-recent nick->hostnames!))
-
-(defn resolve-hostname!
-  "Resolves an identifier to a hostname-ref/hostname pair. The identifiers match these cases:
-
-  1. A nick
-  2. A hostname
-  3. A hostmask
-  4. An extended $a:foo hostmask"
-  [^String who]
-  (let [who (clojure.string/lower-case who)
-        ; If we're given a hostmask, resolve it to a hostname.
-        who (if (hostmask? who)
-              (last (clojure.string/split who #"@"))
-              who)
-        ; If we're given a $a:foo account, resolve it to the account.
-        [who account?] (if (extended-hostmask? who)
-                         [(last (clojure.string/split who #":")) true]
-                         [who false])
-        [hostname-ref hostname] (if account?
-                                  (account->hostname! who)
-                                  (nick->hostname! who))]
-    (if (some? hostname-ref)
-      [hostname-ref hostname]
-      (db.core/query-first! '[:find ?h ?hostname
-                              :in $ ?hostname
-                              :where
-                              [?h :user/hostname ?hostname]]
-                            who))))
-
 (defn message! [& args]
   (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
@@ -224,7 +121,7 @@
   (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         ; TODO: This could be optimized to not resolve the same user more than once.
-        new-modes (clojure.string/join " " (cons modes (map resolve-account! who)))]
+        new-modes (clojure.string/join " " (cons modes (map track.core/resolve-account! who)))]
     (println "set-user-mode" (pr-str {:who who
                                       :modes modes
                                       :new-modes new-modes}))
