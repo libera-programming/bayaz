@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/clojure:lein-2.9.8
+      - image: circleci/clojure
     working_directory: ~/repo
     environment:
       LEIN_ROOT: "true"
@@ -26,7 +26,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
   deploy:
     docker:
-      - image: circleci/clojure:lein-2.9.5
+      - image: circleci/clojure
     working_directory: ~/repo
     environment:
       LEIN_ROOT: "true"
