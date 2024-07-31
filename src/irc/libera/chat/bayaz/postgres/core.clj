@@ -1,7 +1,9 @@
 (ns irc.libera.chat.bayaz.postgres.core
-  (:require [pg.pool :as pgp]
+  (:require [clojure.pprint]
+            [pg.pool :as pgp]
             [pg.honey :as pgh]
             [pg.migration.core :as pgm]
+            [pg.migration.fs]
             [environ.core :refer [env]]
             [irc.libera.chat.bayaz.state :as state]))
 
@@ -23,6 +25,10 @@
 (defn connect! []
   (disconnect!)
   (reset! pool (pgp/pool config))
+
+  (let [url (pg.migration.fs/path->url "migrations")]
+    (clojure.pprint/pprint (pg.migration.core/url->migrations url)))
+
   (pgm/migrate-all config))
 
 (defn query! [honey]
