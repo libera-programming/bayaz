@@ -30,7 +30,7 @@
     (clojure.pprint/pprint (pg.migration.core/url->migrations url)))
 
   (System/exit 0)
-  (pgm/migrate-all config))
+  #_(pgm/migrate-all config))
 
 (defn query! [honey]
   (pgp/with-connection [conn @pool]
