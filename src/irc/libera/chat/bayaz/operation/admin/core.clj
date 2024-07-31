@@ -144,9 +144,11 @@
         now (System/currentTimeMillis)
         response (->> (take max-history-lines associations)
                       (map (fn [association]
-                             ; 3d ago - Last use nick foo with account bar
-                             (str (util/relative-time-offset now (:last_seen association))
-                                  " - Last used "
+                             ; 1y 2mo ago -> 3d ago - Used nick foo with account bar
+                             (str (util/relative-time-offset now (:first_seen association))
+                                  " -> "
+                                  (util/relative-time-offset now (:last_seen association))
+                                  " - Used "
                                   (if-some [nick (:nick association)]
                                     (str "nick " nick
                                          (if-some [account (:account association)]
@@ -156,16 +158,20 @@
         footer (when-not (empty? remaining)
                  (str "Not showing "
                       (count remaining)
-                      " action(s) going back to "
+                      " association"
+                      (when (< 1 (count remaining))
+                        "s")
+                      " going back to "
                       (util/relative-time-offset now (-> remaining last :last_seen))
                       "."))]
     (.respondWith (:event op)
                   (str (if (empty? associations)
                          "No tracking history for "
-                         "Tracking history for ")
+                         "Recent nicks and accounts on current hostname ")
                        who
-                       (when-not (or (= who hostname) (track.core/hostmask? who))
-                         (str " (latest hostname " hostname ")"))))
+                       (when (and (not (empty? associations))
+                                  (not (or (= who hostname) (track.core/hostmask? who))))
+                         (str " (hostname " hostname ")"))))
     (doseq [r response]
       (.respondWith (:event op) r))
     (when (some? footer)
