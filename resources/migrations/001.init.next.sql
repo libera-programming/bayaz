@@ -33,7 +33,7 @@ create table if not exists account_association
   last_seen bigint not null
 );
 
-create type if not exists admin_action_type as enum('note', 'warn', 'quiet', 'ban', 'kick');
+create type admin_action_type as enum('note', 'warn', 'quiet', 'ban', 'kick');
 create table if not exists admin_action
 (
   /* Immutable. */
