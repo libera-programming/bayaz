@@ -1,6 +1,7 @@
 (ns irc.libera.chat.bayaz.operation.util
   (:require [clojure.string :as string]
             [clojure.core.async :as async]
+            [taoensso.timbre :as timbre]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.track.core :as track.core])
   (:import [org.pircbotx PircBotX User UserChannelDao]))
@@ -122,9 +123,7 @@
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         ; TODO: This could be optimized to not resolve the same user more than once.
         new-modes (clojure.string/join " " (cons modes (map track.core/resolve-account! who)))]
-    (println "set-user-mode" (pr-str {:who who
-                                      :modes modes
-                                      :new-modes new-modes}))
+    (timbre/log :set-uset-mode :who who :modes modes :new-modes new-modes)
     (-> (.send channel)
         (.setMode new-modes))))
 

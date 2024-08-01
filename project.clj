@@ -6,6 +6,7 @@
                  [org.clojure/core.async "1.6.681"]
                  [org.clojure/data.json "2.5.0"]
                  [com.github.pircbotx/pircbotx "-SNAPSHOT"]
+                 [com.taoensso/timbre "6.5.0"]
                  [clj-http "3.12.3"]
                  ; HTML parsing for URL lookup.
                  [reaver "0.1.3"]

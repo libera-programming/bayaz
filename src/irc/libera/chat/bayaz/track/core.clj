@@ -1,6 +1,7 @@
 (ns irc.libera.chat.bayaz.track.core
   (:require [clojure.string]
             [clojure.set]
+            [taoensso.timbre :as timbre]
             [honey.sql :as sql]
             [honey.sql.helpers :refer [select from where limit order-by join
                                        insert-into values on-conflict do-update-set returning]]
@@ -9,7 +10,7 @@
 
 (def queue (agent []
                   :error-handler (fn [_ exception]
-                                   (println "tracking error" exception))
+                                   (timbre/error :agent-error :exception exception))
                   :error-mode :continue))
 
 (defn track-hostname! [hostname]
@@ -54,7 +55,7 @@
         hostname (clojure.string/lower-case hostname)
         account (when (some? account)
                   (clojure.string/lower-case account))
-        _ (println "track user" hostname nick account)
+        _ (timbre/info :track-user :hostname hostname :nick nick :account account)
         hostname-ref (track-hostname! hostname)]
     (track-nick! nick hostname-ref timestamp)
     (when-not (empty? account)
@@ -194,7 +195,7 @@
       (str "$a:" (:account account))
 
       (some? latest-nick)
-      (find-hostname-by-ref! (:hostname_id latest-nick))
+      (:hostname (find-hostname-by-ref! (:hostname_id latest-nick)))
 
       ; Assume it's a hostmask.
       :else
