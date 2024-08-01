@@ -111,8 +111,8 @@ pkgs.mkShell {
         # it didn't for me when exiting in a subdirectory.     #
         ########################################################
 
-        cd $PWD
-        rm -rf $NIX_SHELL_DIR
+        #cd $PWD
+        #rm -rf $NIX_SHELL_DIR
       " \
       EXIT
 
