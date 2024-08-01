@@ -123,7 +123,7 @@
         channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
         ; TODO: This could be optimized to not resolve the same user more than once.
         new-modes (clojure.string/join " " (cons modes (map track.core/resolve-account! who)))]
-    (timbre/log :set-uset-mode :who who :modes modes :new-modes new-modes)
+    (timbre/info :set-uset-mode :who who :modes modes :new-modes new-modes)
     (-> (.send channel)
         (.setMode new-modes))))
 
