@@ -3,6 +3,7 @@
   (:require [clojure.string :as string]
             [clojure.core.incubator :refer [dissoc-in]]
             [clojure.core.async :as async]
+            [taoensso.timbre :as timbre]
             [irc.libera.chat.bayaz.util :as util]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.postgres.core :as postgres.core]
@@ -57,7 +58,7 @@
             (or not-handled-admin-op? (= :public (:type operation)))
             (operation.public.core/process! operation)))))
     (catch Throwable e
-      (println "exception thrown:" e))))
+      (timbre/error :exception e))))
 
 (defn process-whois! [^WhoisEvent event]
   ; There's probably an operation waiting for the result of a whois request, so deliver
@@ -68,13 +69,13 @@
       (async/>! pending event))))
 
 (defn process-ban-list! [^BanListEvent event]
-  (println (str "ban list: " (.getEntries event)))
+  (timbre/info :ban-list (.getEntries event))
   (when-some [pending (get-in @state/pending-event-requests [:ban-list (.getName (.getChannel event))])]
     (swap! state/pending-event-requests dissoc-in [:ban-list (.getName (.getChannel event))])
     (deliver pending event)))
 
 (defn process-quiet-list! [^QuietListEvent event]
-  (println (str "quiet list: " (.getEntries event)))
+  (timbre/info :quiet-list (.getEntries event))
   ; TODO: Check this event usage; it's using clj keywords.
   (when-some [pending (get-in @state/pending-event-requests [:quiet-list (:channel-name event)])]
     (swap! state/pending-event-requests dissoc-in [:quiet-list (:channel-name event)])
@@ -83,7 +84,7 @@
 (defn process-join! [^JoinEvent event]
   (let [channel-name (-> event .getChannel .getName)
         user (.getUser event)]
-    (println "process join" channel-name (.getNick user))
+    (timbre/info :join :channel channel-name :nick (.getNick user))
 
     ; If we're joining a channel, send a WHOX to learn about every user in the channel. We only
     ; request for the useful info for tracking: hostname, nick, and account.
@@ -98,14 +99,14 @@
                         (.getTimestamp event)))))
 
 (defn process-part! [^PartEvent event]
-  (println "process part" (-> event .getChannel .getName) (-> event .getUser .getNick))
+  (timbre/info :part :channel (-> event .getChannel .getName) :nick (-> event .getUser .getNick))
   (track-with-tags! (-> event .getUser .getNick)
                     (-> event .getUserHostmask .getHostname)
                     (-> event .getTags util/java-tags->clj-tags)
                     (.getTimestamp event)))
 
 (defn process-quit! [^QuitEvent event]
-  (println "process quit" (-> event .getChannel .getName) (-> event .getUser .getNick))
+  (timbre/info :quit :channel (-> event .getChannel .getName) :nick (-> event .getUser .getNick))
   (track-with-tags! (-> event .getUser .getNick)
                     (-> event .getUserHostmask .getHostname)
                     (-> event .getTags util/java-tags->clj-tags)
@@ -113,11 +114,10 @@
 
 ; TODO: This is never being triggered.
 (defn process-nick-change! [^NickChangeEvent event]
-  (println "process nick change"
-           (-> event .getChannel .getName)
-           (-> event .getUser .getOldNick)
-           "->"
-           (-> event .getUser .getNewNick))
+  (timbre/info :nick-change
+         :channel (-> event .getChannel .getName)
+         :old-nick (-> event .getUser .getOldNick)
+         :new-nick (-> event .getUser .getNewNick))
   (track-with-tags! (-> event .getUser .getNewNick)
                     (-> event .getUserHostmask .getHostname)
                     (-> event .getTags util/java-tags->clj-tags)
@@ -164,6 +164,9 @@
                         (process-server-response! event))))
 
 (defn start! []
+  (timbre/swap-config! assoc :timestamp-opts {:pattern "yyyy-MM-dd HH:mm:ss"
+                                              :locale :jvm-default
+                                              :timezone :utc})
   (let [bot-config (-> (Configuration$Builder.)
                        (.setName (:nick @state/global-config))
                        (.setRealName (:real-name @state/global-config))
