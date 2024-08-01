@@ -29,7 +29,6 @@
   (let [url (pg.migration.fs/path->url "migrations")]
     (clojure.pprint/pprint (pg.migration.core/url->migrations url)))
 
-  (System/exit 0)
   (pgm/migrate-all config))
 
 (defn query! [honey]
