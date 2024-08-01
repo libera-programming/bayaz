@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/clojure:lein-2.9.8
+      - image: circleci/clojure
     working_directory: ~/repo
     environment:
       LEIN_ROOT: "true"
@@ -26,7 +26,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
   deploy:
     docker:
-      - image: circleci/clojure:lein-2.9.5
+      - image: circleci/clojure
     working_directory: ~/repo
     environment:
       LEIN_ROOT: "true"
@@ -49,7 +49,7 @@ jobs:
       - run: |
           ssh-keyscan -H pastespace.org >> ~/.ssh/known_hosts
           scp -o StrictHostKeyChecking=no target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
-          ssh -o StrictHostKeyChecking=no bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1.jar"
+          ssh -o StrictHostKeyChecking=no bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1-standalone.jar"
 
 workflows:
   build:
