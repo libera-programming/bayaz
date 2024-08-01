@@ -194,7 +194,7 @@
       (str "$a:" (:account account))
 
       (some? latest-nick)
-      (find-hostname-by-ref! (:hostname_id latest-nick))
+      (:hostname (find-hostname-by-ref! (:hostname_id latest-nick)))
 
       ; Assume it's a hostmask.
       :else
