@@ -49,7 +49,7 @@ jobs:
       - run: |
           ssh-keyscan -H pastespace.org >> ~/.ssh/known_hosts
           scp -o StrictHostKeyChecking=no target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
-          ssh -o StrictHostKeyChecking=no bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1-standalone.jar"
+          ssh -o StrictHostKeyChecking=no bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1.jar"
 
 workflows:
   build:
