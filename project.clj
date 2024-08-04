@@ -10,9 +10,9 @@
                  [clj-http "3.12.3"]
                  ; HTML parsing for URL lookup.
                  [reaver "0.1.3"]
-                 [com.github.igrishaev/pg2-core "0.1.15"]
-                 [com.github.igrishaev/pg2-honey "0.1.15"]
-                 [com.github.igrishaev/pg2-migration "0.1.15"]
+                 [com.github.igrishaev/pg2-core "0.1.16"]
+                 [com.github.igrishaev/pg2-honey "0.1.16"]
+                 [com.github.igrishaev/pg2-migration "0.1.16"]
                  [dev.weavejester/medley "1.7.0"]
                  [environ "1.2.0"]]
   :plugins [[lein-environ "1.2.0"]
