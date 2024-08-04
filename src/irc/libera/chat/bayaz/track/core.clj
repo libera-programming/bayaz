@@ -3,7 +3,7 @@
             [clojure.set :refer [difference]]
             [taoensso.timbre :as timbre]
             [honey.sql :as sql]
-            [honey.sql.helpers :refer [select from where limit order-by join
+            [honey.sql.helpers :refer [select from where limit order-by join union
                                        insert-into values on-conflict do-update-set returning]]
             [irc.libera.chat.bayaz.postgres.core :as postgres.core]))
 
@@ -124,12 +124,63 @@
                               (order-by [:last_seen :desc])
                               (join :hostname [:= :hostname.id :nick_association.hostname_id]))))
 
+(defn find-all-hostnames-by-nicks! [whos]
+  (when-not (empty? whos)
+    (postgres.core/execute! (-> (select :hostname.id :hostname.hostname)
+                                (from :nick_association)
+                                (where [:in :nick (seq whos)])
+                                (order-by [:last_seen :desc])
+                                (join :hostname [:= :hostname.id :nick_association.hostname_id])))))
+
+(defn find-all-hostnames-by-nicks-and-accounts! [nicks accounts]
+  (let [nick-query (when-some [whos (seq nicks)]
+                       (-> (select :hostname.id :hostname.hostname)
+                           (from :nick_association)
+                           (where [:in :nick whos])
+                           (join :hostname [:= :hostname.id :nick_association.hostname_id])))
+        account-query (when-some [whos (seq accounts)]
+                        (-> (select :hostname.id :hostname.hostname)
+                            (from :account_association)
+                            (where [:in :account whos])
+                            (join :hostname [:= :hostname.id :account_association.hostname_id])))]
+    (postgres.core/execute! (cond
+                              (and nick-query account-query)
+                              (union nick-query account-query)
+
+                              nick-query
+                              nick-query
+
+                              account-query
+                              account-query))))
+
+(comment
+  (let [nicks ["guest63"]
+        accounts []]
+    (println (sql/format (union (-> (select :hostname.id :hostname.hostname)
+                                    (from :nick_association)
+                                    (where [:in :nick (seq nicks)])
+                                    (join :hostname [:= :hostname.id :nick_association.hostname_id]))
+                                (-> (select :hostname.id :hostname.hostname)
+                                    (from :account_association)
+                                    (where [:in :account (seq accounts)])
+                                    (join :hostname [:= :hostname.id :account_association.hostname_id])))
+                         {:pretty true})))
+  (find-all-hostnames-by-nicks! #{"guest63"}))
+
 (defn find-all-hostnames-by-account! [who]
   (postgres.core/execute! (-> (select :hostname.id :hostname.hostname)
                               (from :account_association)
                               (where [:= :account who])
                               (order-by [:last_seen :desc])
                               (join :hostname [:= :hostname.id :account_association.hostname_id]))))
+
+(defn find-all-hostnames-by-accounts! [whos]
+  (when-not (empty? whos)
+    (postgres.core/execute! (-> (select :hostname.id :hostname.hostname)
+                                (from :account_association)
+                                (where [:in :account (seq whos)])
+                                (order-by [:last_seen :desc])
+                                (join :hostname [:= :hostname.id :account_association.hostname_id])))))
 
 (defn find-all-nicks-by-hostname-ref! [hostname-ref]
   (postgres.core/execute! (-> (select :*)
@@ -240,37 +291,40 @@
 ; 4. Remove redundant hostname lookups: 37738.311656 msecs, 37960.517238 msecs
 ; 5. Result transducer: 35530.720391 msecs, 35736.725686 msecs
 
+(defn row->seen* [row]
+  [(:id row) (:hostname row)])
+
 (defn deep-whois! [who]
-  (-> (loop [whos #{(resolve-hostname! (lower-case who))}
-             seen #{}
+  (-> (loop [remaining-hostname-pairs #{(resolve-hostname! (lower-case who))}
+             seen-hostname-pairs #{}
              results []]
-        (if (empty? whos)
+        (if (empty? remaining-hostname-pairs)
           results
-          (let [[hostname-ref hostname :as who] (first whos)]
-            (if (contains? seen hostname-ref)
-              (recur (disj whos who) seen results)
-              (let [nicks (find-all-nicks-by-hostname-ref! hostname-ref)
-                    accounts (find-all-accounts-by-hostname-ref! hostname-ref)
-                    seen (conj seen who)]
-                (recur (-> (disj whos who)
-                           (into (mapcat (comp #(map (fn [row]
-                                                       [(:id row) (:hostname row)])
-                                                     %)
-                                               find-all-hostnames-by-nick!
-                                               :nick))
-                                 nicks)
-                           (into (mapcat (comp #(map (fn [row]
-                                                       [(:id row) (:hostname row)])
-                                                     %)
-                                               find-all-hostnames-by-account!
-                                               #(str "$a:" (:account %))))
-                                 accounts)
-                           (difference seen))
-                       seen
-                       (into results
-                             (map #(assoc % :hostname hostname))
-                             (lazy-cat nicks accounts))))))))
+          (let [[hostname-ref hostname :as pair] (first remaining-hostname-pairs)
+                nicks (find-all-nicks-by-hostname-ref! hostname-ref)
+                accounts (find-all-accounts-by-hostname-ref! hostname-ref)
+                seen-hostname-pairs (conj seen-hostname-pairs pair)]
+            (recur (-> (disj remaining-hostname-pairs pair)
+                       (into (map row->seen*)
+                             (find-all-hostnames-by-nicks-and-accounts! (map :nick nicks)
+                                                                        (map #(str "$a:" (:account %))
+                                                                             accounts)))
+                       (difference seen-hostname-pairs))
+                   seen-hostname-pairs
+                   (into results
+                         (map #(assoc % :hostname hostname))
+                         (lazy-cat nicks accounts))))))
       collapse-whois-results))
 
 (comment
-  (deep-whois! "bjorkintosh"))
+  *e
+  (time (count (deep-whois! "guest63")))
+
+  (find-all-nicks-by-hostname-ref! 17551)
+
+  (require '[clj-async-profiler.core :as prof])
+
+  (prof/profile (time (count (deep-whois! "Guest63"))))
+
+  (prof/serve-ui 8080)
+  )

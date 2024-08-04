@@ -21,10 +21,12 @@
   :main ^:skip-aot irc.libera.chat.bayaz.core
   :global-vars {*warn-on-reflection* true}
   :target-path "target/%s"
-  :profiles {:dev {:dependencies [[nubank/matcher-combinators "3.9.1"]]
+  :profiles {:dev {:dependencies [[nubank/matcher-combinators "3.9.1"]
+                                  [com.clojure-goes-fast/clj-async-profiler "1.2.2"]]
                    :env {:bayaz-db "dev-resources/db"}
                    :jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
-                              "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
+                              "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+                              "-Djdk.attach.allowAttachSelf"]}
              :test {:test-refresh {:focus-flag :focus}}
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})
