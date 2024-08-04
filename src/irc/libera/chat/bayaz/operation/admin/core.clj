@@ -198,7 +198,7 @@
                    :ignore-unknown-host? true
                    :max-redirects 5
                    :redirect-strategy :graceful
-                   :socket-timeout 2000
+                   :socket-timeout 20000
                    :connection-timeout 2000
                    :accept :json
                    :headers {"X-GitHub-Api-Version" "2022-11-28"
