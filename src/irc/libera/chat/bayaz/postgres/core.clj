@@ -2,6 +2,8 @@
   (:require [pg.pool :as pgp]
             [pg.honey :as pgh]
             [pg.migration.core :as pgm]
+            [honey.sql :as sql]
+            [taoensso.timbre :as timbre]
             [environ.core :refer [env]]
             [irc.libera.chat.bayaz.state :as state]))
 
@@ -26,9 +28,11 @@
   (pgm/migrate-all config))
 
 (defn query! [honey]
+  (timbre/trace :query (sql/format honey {:pretty true}))
   (pgp/with-connection [conn @pool]
     (pgh/query conn honey)))
 
 (defn execute! [honey]
+  (timbre/trace :execute (sql/format honey {:pretty true}))
   (pgp/with-connection [conn @pool]
     (pgh/execute conn honey)))
