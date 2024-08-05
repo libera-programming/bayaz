@@ -1,8 +1,9 @@
 (ns irc.libera.chat.bayaz.operation.public.core
   (:require [clojure.string :as string]
             [clojure.data.json :as json]
-            [clj-http.client :as http]
             [clojure.core.memoize :as memo]
+            [clj-http.client :as http]
+            [taoensso.timbre :as timbre]
             [reaver]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.util :as util]))
@@ -45,6 +46,7 @@
 (defn fetch-youtube-url!* [url]
   (let [oembed-url (format "https://www.youtube.com/oembed?url=%s" url)
         res (http/get oembed-url (assoc http-opts :accept :json))]
+    (timbre/debug :fetch-youtube-url res)
     (when (= 200 (:status res))
       (let [json-body (-> res :body json/read-str)]
         (get json-body "title")))))
