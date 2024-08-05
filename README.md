@@ -10,6 +10,7 @@
 
 ## Features
 - [X] Configuration
+  - [X] Multi-channel support
   - [X] Granular feature flags to enable/disable specific functionality
 - [X] Moderation
   - [ ] Admin registration/maintenance
