@@ -41,7 +41,7 @@
 ; YouTube has blocked bayaz's IP in such a way that it always returns HTML
 ; with <title>- YouTube</title>, thus leaving out all of the important bits.
 ; We get around this by using oembed.
-(def youtube-domains #{"youtube.com" "m.youtube.com" "youtu.be" "youtube-nocookie.com"})
+(def youtube-domains #{"youtube.com" "www.youtube.com" "m.youtube.com" "youtu.be" "youtube-nocookie.com"})
 (defn fetch-youtube-url!* [url]
   (let [oembed-url (format "https://www.youtube.com/oembed?url=%s" url)
         res (http/get oembed-url (assoc http-opts :accept :json))]
