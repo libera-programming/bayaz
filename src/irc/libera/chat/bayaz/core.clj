@@ -36,6 +36,7 @@
 
       ; TODO: Test this check.
       (when-not (= (.getUserBot ^PircBotX @state/bot) user)
+        ; TODO: DM has no channel.
         (let [channel (.getName (.getChannel event))
               from-admin? (state/admin? channel account)
               operation (-> (operation.util/message->operation message)

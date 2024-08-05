@@ -7,7 +7,7 @@
  :channels {"##programming" {:admins #{"jeaye" "inphase" "arahael" "vdamewood" "metayeti" "deniska" "amigojapan" "merijn" "edfletcher"}
                              :features #{:admin :bayaz-command :ops-command :title-fetch}}
             "##programming-ops" {:features #{:admin :bayaz-command :ops-command :title-fetch}
-                                 :feature/admin-remote-for "##programming-bots"}
+                                 :feature/admin-remote-for "##programming"}
             "#clojure" {:admins #{"jeaye" "technomancy" "ridcully"}
                         :features #{:admin :bayaz-command :ops-command :title-fetch}}
             ;"#linux" {}
