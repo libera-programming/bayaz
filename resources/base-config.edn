@@ -4,8 +4,13 @@
  :real-name "Bayaz"
  :command-prefix "!"
  :quit-message "Power makes all things right. That is my first law, and my last. That is the only law that I acknowledge."
- :primary-channel "##programming"
- :additional-channels ["##programming-ops"]
- :admins #{"jeaye" "inphase" "arahael" "vdamewood" "metayeti" "deniska" "amigojapan" "merijn" "edfletcher"}
- :features #{:admin :bayaz-command :ops-command :title-fetch}
+ :channels {"##programming" {:admins #{"jeaye" "inphase" "arahael" "vdamewood" "metayeti" "deniska" "amigojapan" "merijn" "edfletcher"}
+                             :features #{:admin :bayaz-command :ops-command :title-fetch}}
+            "##programming-ops" {:features #{:admin :bayaz-command :ops-command :title-fetch}
+                                 :feature/admin-remote-for "##programming-bots"}
+            "#clojure" {:admins #{"jeaye" "technomancy" "ridcully"}
+                        :features #{:admin :bayaz-command :ops-command :title-fetch}}
+            ;"#linux" {}
+            ;"#libera" {}
+            }
  :gist-token nil}

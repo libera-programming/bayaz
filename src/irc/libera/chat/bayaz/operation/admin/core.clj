@@ -2,6 +2,7 @@
   (:require [clojure.string :as string]
             [clojure.data.json :as json]
             [clj-http.client :as http]
+            [taoensso.timbre :as timbre]
             [honey.sql :as sql]
             [honey.sql.helpers :refer [select from where limit order-by join
                                        insert-into values on-conflict do-update-set returning]]
@@ -12,29 +13,32 @@
             [irc.libera.chat.bayaz.track.core :as track.core])
   (:import [org.pircbotx PircBotX UserChannelDao]))
 
-(defn track-operation! [action admin-account who why]
+(defn track-operation! [channel action admin-account who why]
   (let [who (clojure.string/lower-case who)
         why (clojure.string/join " " why)
         [hostname-ref] (track.core/resolve-hostname! who)]
     (if (some? hostname-ref)
       (postgres.core/execute! (-> (insert-into :admin_action)
                                   (values [{:target_id hostname-ref
+                                            :channel channel
                                             :admin_account admin-account
                                             :action (name action)
                                             :reason why
                                             :seen (System/currentTimeMillis)}])))
       (println "error: no hostname ref while tracking admin action"
                {:action action
+                :channel channel
                 :admin admin-account
                 :who who
                 :why why}))))
 
 (def max-history-lines 5)
 
-(defn find-admin-actions-for-hostname-ref! [hostname-ref]
+(defn find-admin-actions-for-hostname-ref! [channel hostname-ref]
   (postgres.core/execute! (-> (select :*)
                               (from :admin_action)
-                              (where [:= :target_id hostname-ref])
+                              (where [:= :target_id hostname-ref]
+                                     [:= :channel channel])
                               (order-by [:seen :desc]))))
 
 (defmulti process!
@@ -44,67 +48,79 @@
 (defmethod process! "warn"
   [op]
   (let [[who & why] (:args op)
-        ^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)]
+        ^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
     (if-not (.containsUser user-channel-dao who)
       (.respond (:event op) "Warn syntax is: !w <nick> [reason]")
       (do
-        (track-operation! :admin/warn (:account op) who why)
-        (operation.util/message! (str "This is a warning, " who ". " (when-not (empty? why)
+        (track-operation! channel :admin/warn (:account op) who why)
+        (operation.util/message! channel
+                                 (str "This is a warning, " who ". " (when-not (empty? why)
                                                                        (string/join " " why))))))))
 
 (defmethod process! "warnall"
   [op]
-  (let [[& why] (:args op)]
-    (operation.util/message! (str "Everyone, this is a warning. " (when-not (empty? why)
+  (let [[& why] (:args op)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+    (operation.util/message! channel
+                             (str "Everyone, this is a warning. " (when-not (empty? why)
                                                                     (string/join " " why))))))
 
 (defmethod process! "quiet"
   [op]
-  (let [[who & why] (:args op)]
-    (track-operation! :admin/quiet (:account op) who why)
-    (operation.util/set-user-mode! "+q" who)))
+  (timbre/debug :quiet op)
+  (let [[who & why] (:args op)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+    (track-operation! channel :admin/quiet (:account op) who why)
+    (operation.util/set-user-mode! channel "+q" who)))
 
 (defmethod process! "unquiet"
   [op]
   (let [; TODO: Validate
-        [who & why] (:args op)]
-    (track-operation! :admin/unquiet (:account op) who why)
-    (operation.util/set-user-mode! "-q" who)))
+        [who & why] (:args op)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+    (track-operation! channel :admin/unquiet (:account op) who why)
+    (operation.util/set-user-mode! channel "-q" who)))
 
 (defmethod process! "ban"
   [op]
   (let [; TODO: Validate this input.
-        [who & why] (:args op)]
-    (track-operation! :admin/ban (:account op) who why)
-    (operation.util/set-user-mode! "-q+b" who who)))
+        [who & why] (:args op)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+    (track-operation! channel :admin/ban (:account op) who why)
+    (operation.util/set-user-mode! channel "-q+b" who who)))
 
 (defmethod process! "unban"
   [op]
   (let [; TODO: Validate
-        [who & why] (:args op)]
-    (track-operation! :admin/unban (:account op) who why)
-    (operation.util/set-user-mode! "-b" who)))
+        [who & why] (:args op)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+    (track-operation! channel :admin/unban (:account op) who why)
+    (operation.util/set-user-mode! channel "-b" who)))
 
 (defmethod process! "kickban"
   [op]
   (let [; TODO: Validate this input.
-        [who] (:args op)]
+        [who] (:args op)
+        channel (.getName (.getChannel (:event op)))]
     (process! (assoc op :command "ban"))
-    (operation.util/kick! who)))
+    (operation.util/kick! channel who)))
 
 (defmethod process! "kick"
   [op]
   (let [; TODO: Validate this input.
-        [who & why] (:args op)]
-    (track-operation! :admin/kick (:account op) who why)
-    (operation.util/kick! who)))
+        [who & why] (:args op)
+        channel (.getName (.getChannel (:event op)))]
+    (track-operation! channel :admin/kick (:account op) who why)
+    (operation.util/kick! channel who)))
 
 (defmethod process! "history"
   [op]
   (let [[who] (:args op)
         who (clojure.string/lower-case who)
         [hostname-ref hostname] (track.core/resolve-hostname! who)
-        actions (find-admin-actions-for-hostname-ref! hostname-ref)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))
+        actions (find-admin-actions-for-hostname-ref! channel hostname-ref)
         now (System/currentTimeMillis)
         response (->> (take max-history-lines actions)
                       (map (fn [action]

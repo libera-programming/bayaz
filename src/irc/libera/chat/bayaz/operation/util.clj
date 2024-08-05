@@ -100,39 +100,32 @@
       (let [[v _port] (async/alts! [pending-whois timeout-chan] :priority true)]
         v))))
 
-(defn message! [& args]
+(defn message! [channel-name & args]
   (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
+        channel (.getChannel user-channel-dao channel-name)
         message (string/join " " args)]
     (-> (.send channel)
         (.message message))))
-
-(defn action! [& args]
-  (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
-        action (string/join " " args)]
-    (-> (.send channel)
-        (.action action))))
 
 (defn set-user-mode!
   "Sets the modes for the specified users in the primary channel. `who` is a
   sequence of any valid user identifier and `modes` should be the modes to set,
   prefixed with + or - as necessary."
-  [modes & who]
+  [channel-name modes & who]
   (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))
+        channel (.getChannel user-channel-dao channel-name)
         ; TODO: This could be optimized to not resolve the same user more than once.
         new-modes (clojure.string/join " " (cons modes (map track.core/resolve-account! who)))]
-    (timbre/info :set-uset-mode :who who :modes modes :new-modes new-modes)
+    (timbre/info :set-uset-mode :channel channel-name :who who :modes modes :new-modes new-modes)
     (-> (.send channel)
         (.setMode new-modes))))
 
 (defn kick!
   "Kicks a user from the primary channel. Note that `who` has to be a nick in order for this
   to work."
-  [^String who]
+  [channel-name ^String who]
   (let [^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (.getChannel user-channel-dao (:primary-channel @state/global-config))]
+        channel (.getChannel user-channel-dao channel-name)]
     (when-some [user (.getUser user-channel-dao who)]
       (-> (.send channel)
           (.kick user)))))
