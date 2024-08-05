@@ -13,15 +13,19 @@
 
 (defmethod process! "bayaz"
   [op]
-  (when (state/feature-enabled? :bayaz-command)
+  (when (state/feature-enabled? (.getName (.getChannel (:event op))) :bayaz-command)
     (.respondWith (:event op)
                   (str "I'm a Clojure bot. My source is here: https://github.com/libera-programming/bayaz"))))
 
 (defmethod process! "ops"
   [op]
-  (when (state/feature-enabled? :ops-command)
-    (.respondWith (:event op)
-                  (str "Admins are: " (string/join ", " (:admins @state/global-config))))))
+  (when (state/feature-enabled? (.getName (.getChannel (:event op))) :ops-command)
+    (let [channel (.getName (.getChannel (:event op)))
+          target-channel (state/target-channel-for-channel channel)
+          admins (get-in @state/global-config [:channels target-channel :admins])]
+      (if (empty? admins)
+        (.respondWith (:event op) (str "I have no admins here."))
+        (.respondWith (:event op) (str "Admins are: " (string/join ", " admins)))))))
 
 (defmethod process! :default
   [_op]
@@ -136,8 +140,7 @@
       (util/truncate util/max-message-length)))
 
 (defn process-message! [op]
-  (when (and (state/feature-enabled? :title-fetch)
-             (= (:channel op) (:primary-channel @state/global-config)))
+  (when (state/feature-enabled? (.getName (.getChannel (:event op))) :title-fetch)
     (let [urls (->> (:parts op)
                     (filter (fn [s]
                               (re-matches #"https?://\S+" s))))

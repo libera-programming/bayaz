@@ -1,7 +1,7 @@
 (ns irc.libera.chat.bayaz.state
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string]))
+            [clojure.string :as string]))
 
 (defonce bot (atom nil))
 ; This is a general event queue of sorts, with which system can subscribe to upcoming events.
@@ -21,5 +21,15 @@
 (def global-config (delay (merge (read-config (io/resource "base-config.edn"))
                                  (read-config "config.edn"))))
 
-(defn feature-enabled? [feature]
-  (contains? (:features @global-config) feature))
+(defn feature-enabled? [channel feature]
+  (contains? (get-in @global-config [:channels channel :features] #{}) feature))
+
+(defn target-channel-for-channel [channel]
+  (get-in @global-config [:channels channel :feature/admin-remote-for] channel))
+
+(defn admin? [channel account]
+  (and (some? account)
+       (contains? (get-in @global-config
+                          [:channels (target-channel-for-channel channel) :admins]
+                          #{})
+                  (string/lower-case account))))

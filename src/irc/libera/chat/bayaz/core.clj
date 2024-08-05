@@ -19,9 +19,6 @@
             BanListEvent QuietListEvent JoinEvent PartEvent QuitEvent
             ServerResponseEvent NickChangeEvent]))
 
-(defn admin? [account]
-  (and (some? account) (contains? (:admins @state/global-config) (string/lower-case account))))
-
 (defn track-with-tags! [nick hostname tags timestamp]
   (send-off track.core/queue
             (fn [_]
@@ -39,17 +36,18 @@
 
       ; TODO: Test this check.
       (when-not (= (.getUserBot ^PircBotX @state/bot) user)
-        (let [from-admin? (admin? account)
+        (let [channel (.getName (.getChannel event))
+              from-admin? (state/admin? channel account)
               operation (-> (operation.util/message->operation message)
                             (assoc :type message-type
                                    :event event
                                    :account account)
                             (merge (when (= :public message-type)
-                                     {:channel (.getName (.getChannel event))}))
+                                     {:channel channel}))
                             operation.util/normalize-command)
               command? (-> operation :command some?)
               ; TODO: Is this needed, if we have the operation type on hand?
-              not-handled-admin-op? (when (and from-admin? command? (state/feature-enabled? :admin))
+              not-handled-admin-op? (when (and from-admin? command? (state/feature-enabled? channel :admin))
                                       (= :not-handled (operation.admin.core/process! operation)))]
           (cond
             (not command?)
@@ -131,7 +129,7 @@
   (case (.getCode event)
     ; :molybdenum.libera.chat 354 client hostname nick account
     354
-    (let [[_ _ _ hostname nick account] (clojure.string/split (.getRawLine event) #" ")]
+    (let [[_ _ _ hostname nick account] (string/split (.getRawLine event) #" ")]
       (track-with-tags! nick hostname
                         (merge {}
                                (when-not (= "0" account)
@@ -179,8 +177,7 @@
                        ; on messages/actions/mode sets from registered users. It means we don't need
                        ; to whois everyone.
                        (.addCapHandler (EnableCapHandler. "account-tag"))
-                       (.addAutoJoinChannels (seq (cons (:primary-channel @state/global-config)
-                                                        (:additional-channels @state/global-config))))
+                       (.addAutoJoinChannels (keys (:channels @state/global-config)))
                        (.addListener event-listener)
                        ; We send our own WHOX, rather than the lib's WHO, so we
                        ; can get account info for everyone already in the
