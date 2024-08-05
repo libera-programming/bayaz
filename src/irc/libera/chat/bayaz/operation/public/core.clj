@@ -37,7 +37,8 @@
                 :max-redirects 5
                 :redirect-strategy :graceful
                 :socket-timeout 2000
-                :connection-timeout 2000})
+                :connection-timeout 2000
+                :headers {"User-Agent" "Mozilla/5.0 (X11; Linux x86_64; rv:127.0) Gecko/20100101 Firefox/127.0"}})
 
 ; YouTube has blocked bayaz's IP in such a way that it always returns HTML
 ; with <title>- YouTube</title>, thus leaving out all of the important bits.
