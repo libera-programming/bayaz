@@ -50,7 +50,7 @@
     (timbre/debug :fetch-youtube-url res)
     (when (= 200 (:status res))
       (let [json-body (-> res :body json/read-str)]
-        (get json-body "title")))))
+        {:title (get json-body "title")}))))
 
 (def max-content-size (* 512 1000)) ; 512 kB
 (defn fetch-url!*
