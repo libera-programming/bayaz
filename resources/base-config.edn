@@ -9,7 +9,8 @@
             "##programming-ops" {:features #{:admin :bayaz-command :ops-command :title-fetch}
                                  :feature/admin-remote-for "##programming"}
             "#clojure" {:admins #{"jeaye" "technomancy" "ridcully"}
-                        :features #{:admin :bayaz-command :ops-command :title-fetch :clojure-eval}}
+                        :features #{:admin :bayaz-command :ops-command :title-fetch :clojure-eval}
+                        :feature/clojure-eval-prefix ","}
             ;"#linux" {}
             ;"#libera" {}
             }
