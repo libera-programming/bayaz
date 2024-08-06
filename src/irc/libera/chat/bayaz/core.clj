@@ -36,7 +36,6 @@
 
       ; TODO: Test this check.
       (when-not (= (.getUserBot ^PircBotX @state/bot) user)
-        ; TODO: DM has no channel.
         (let [channel (.getName (.getChannel event))
               from-admin? (state/admin? channel account)
               operation (-> (operation.util/message->operation message)
@@ -144,7 +143,9 @@
                       (onMessage [^MessageEvent event]
                         (process-message! (.getUser event) (.getMessage event) :public event))
                       (onPrivateMessage [^PrivateMessageEvent event]
-                        (process-message! (.getUser event) (.getMessage event) :private event))
+                        ; XXX: We drop PMs, at this point.
+                        nil
+                        #_(process-message! (.getUser event) (.getMessage event) :private event))
                       (onWhois [^WhoisEvent event]
                         (process-whois! event))
                       (onBanList [^BanListEvent event]

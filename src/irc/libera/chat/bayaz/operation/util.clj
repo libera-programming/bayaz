@@ -55,6 +55,7 @@
                                                    first)))]
     {:parts (into [] parts)
      :command command
+     :message message
      :mention? contains-prefix?
      :args (into [] args)}))
 
