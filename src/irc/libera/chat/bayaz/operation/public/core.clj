@@ -5,6 +5,7 @@
             [clj-http.client :as http]
             [taoensso.timbre :as timbre]
             [reaver]
+            [irc.libera.chat.bayaz.operation.public.clojure-eval :as public.clojure-eval]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.util :as util]))
 
@@ -143,11 +144,24 @@
       (util/truncate util/max-message-length)))
 
 (defn process-message! [op]
-  (when (state/feature-enabled? (.getName (.getChannel (:event op))) :title-fetch)
-    (let [urls (->> (:parts op)
-                    (filter (fn [s]
-                              (re-matches #"https?://\S+" s))))
-          infos (mapv #(future (fetch-url! %)) urls)]
-      (doseq [info infos]
-        (when-some [info @info]
-          (.respondWith (:event op) (url-info->message info)))))))
+  (let [channel (.getName (.getChannel (:event op)))
+        eval-prefix (get-in @state/global-config [:channels channel :feature/clojure-eval-prefix])]
+    (timbre/debug :eval-prefix eval-prefix :eval-enabled? (state/feature-enabled? channel :clojure-eval) :message (:message op))
+    (cond
+      (and eval-prefix
+           (state/feature-enabled? channel :clojure-eval)
+           (string/starts-with? (:message op) eval-prefix))
+      (let [eval-outcome (public.clojure-eval/eval (subs (:message op) (count eval-prefix)))
+            result (or (:result eval-outcome) (.toString (:error eval-outcome)))]
+        (when-some [out (:output eval-outcome)]
+          (.respondWith (:event op) (util/truncate out util/max-message-length)))
+        (.respondWith (:event op) (util/truncate result util/max-message-length)))
+
+      (state/feature-enabled? (.getName (.getChannel (:event op))) :title-fetch)
+      (let [urls (->> (:parts op)
+                      (filter (fn [s]
+                                (re-matches #"https?://\S+" s))))
+            infos (mapv #(future (fetch-url! %)) urls)]
+        (doseq [info infos]
+          (when-some [info @info]
+            (.respondWith (:event op) (url-info->message info))))))))
