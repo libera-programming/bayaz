@@ -23,8 +23,7 @@
                                         ; Escape all quotes, since we'll run the code from a string.
                                         ; This will prevent any injections.
                                         (format code-prefix (string/replace code #"\"" "\\\\\""))))
-            cmd ["/usr/bin/env"
-                 "bash" "-c"
+            cmd ["/run/current-system/sw/bin/bash" "-c"
                  ; We use bash's timeout feature to kill the process for us.
                  ; It'll set the exit code to 124 if the command times out.
                  (format "timeout %ds bb %s" default-timeout-s source-file)]
