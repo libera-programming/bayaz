@@ -151,10 +151,7 @@
       (and eval-prefix
            (state/feature-enabled? channel :clojure-eval)
            (string/starts-with? (:message op) eval-prefix))
-      (let [eval-outcome (public.clojure-eval/eval (subs (:message op) (count eval-prefix)))
-            result (or (:result eval-outcome) (.toString (:error eval-outcome)))]
-        (when-some [out (:output eval-outcome)]
-          (.respondWith (:event op) (util/truncate out util/max-message-length)))
+      (let [result (public.clojure-eval/eval (subs (:message op) (count eval-prefix)))]
         (.respondWith (:event op) (util/truncate result util/max-message-length)))
 
       (state/feature-enabled? (.getName (.getChannel (:event op))) :title-fetch)

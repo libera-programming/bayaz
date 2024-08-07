@@ -1,47 +1,70 @@
 (ns irc.libera.chat.bayaz.operation.public.clojure-eval
   (:require [clojure.string :as string]
-            [taoensso.timbre :as timbre]
-            [embroidery.api :as embroidery]
-            [sci.core :as sci]))
+            [taoensso.timbre :as timbre]))
 
-(def default-timeout-in-sec 2)
-(def code-prefix "(use 'clojure.repl)")
-(def sci-opts {})
+(def default-timeout-s 2)
+(def max-output-lines 10)
+(def code-prefix "(use 'clojure.repl) (println (pr-str (do %s)))")
 
-(defn eval* [code]
-  (try
-    (let [sw (java.io.StringWriter.)
-          result (sci/binding [sci/out sw
-                               sci/err sw]
-                   ; Make sure we stringify the result inside sci/binding,
-                   ; to force de-lazying of the result of evaluating code
-                   (pr-str (sci/eval-string (str code-prefix "\n" code) sci-opts)))]
-      (merge {:result result}
-             (when-let [output (when-not (string/blank? (str sw))
-                                 (str sw))]
-               {:output output})))
-    (catch Throwable t
-      {:error t})))
+(defn temp-file! []
+  (java.nio.file.Files/createTempFile (str (java.util.UUID/randomUUID))
+                                      (str (java.util.UUID/randomUUID))
+                                      (make-array java.nio.file.attribute.FileAttribute 0)))
 
-(defn eval
-  "Evaluates the given Clojure code, with a timeout on execution (default is 2 seconds).
-  Result is a map which may contain these keys:
+(defn eval [code]
+  (let [source-file (.toFile (temp-file!))
+        output-file (.toFile (temp-file!))]
+    (try
+      (let [_ (spit source-file (format "(require '[sci.core])
+                                        (try
+                                          (sci.core/eval-string \"%s\")
+                                          (catch Exception e
+                                            (println (.getMessage e))))"
+                                        ; Escape all quotes, since we'll run the code from a string.
+                                        ; This will prevent any injections.
+                                        (format code-prefix (string/replace code #"\"" "\\\\\""))))
+            cmd ["/usr/bin/env"
+                 "bash" "-c"
+                 ; We use bash's timeout feature to kill the process for us.
+                 ; It'll set the exit code to 124 if the command times out.
+                 (format "timeout %ds bb %s" default-timeout-s source-file)]
+            pb (doto
+                 (java.lang.ProcessBuilder. (into-array ^String cmd))
+                 ; We write output to a file, rather than keep it in memory. We can't write enough
+                 ; in a couple of seconds to fill the drive and the temp files will be deleted right
+                 ; away.
+                 (.redirectErrorStream true)
+                 (.redirectOutput (java.lang.ProcessBuilder$Redirect/appendTo output-file)))
+            process (.start pb)
+            ; Using time `timeout` above, we shouldn't ever need a timeout here, but
+            ; we use twice the normal timeout just to be safe.
+            _ (.waitFor process (* 2 default-timeout-s) java.util.concurrent.TimeUnit/SECONDS)
+            _ (.destroyForcibly process)
+            exit-code (.exitValue process)
+            output-lines (string/split-lines (slurp output-file))
+            max-output-lines (if (= 124 exit-code)
+                               (dec max-output-lines)
+                               max-output-lines)
+            taken-output-lines (into [] (take (dec max-output-lines) output-lines))
+            skipped-lines (- (count output-lines) (count taken-output-lines))
+            has-skipped-lines? (< 0 skipped-lines)
+            info-lines (cond-> []
+                         has-skipped-lines?
+                         (conj (format "< skipping %d additional line%s >"
+                                       skipped-lines
+                                       (if (< 1 skipped-lines)
+                                         "s"
+                                         "")))
 
-  :output any output sent to stdout or stderr
-  :result the last result returned by the evaluated code
-  :error  an error (either a string or a Throwable), if an error occurred"
-  ([code] (eval code default-timeout-in-sec))
-  ([code timeout-in-sec]
-   (when code
-     (timbre/debug "Evaluating Clojure forms:" code)
-     (let [result (try
-                    (let [f (embroidery/future* (eval* code))
-                          eval-result (deref f
-                                             (* 1000 timeout-in-sec)
-                                             {:error (str "Execution terminated after " timeout-in-sec "s.")})]
-                      (when-not (future-done? f) (future-cancel f))
-                      eval-result)
-                    (catch Throwable t
-                      {:error t}))]
-       (timbre/debug "Eval result" result)
-       result))))
+                         (= 124 exit-code)
+                         (conj (format "Process timed out after %ds" default-timeout-s)))
+            output (string/join "\n" (lazy-cat taken-output-lines info-lines))]
+        output)
+      (finally
+        (.delete source-file)
+        (.delete output-file)))))
+
+(comment
+
+  (println (eval "(str 1 2)"))
+  (println (eval "\") (println 42) (do \"1")))

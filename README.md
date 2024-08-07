@@ -55,9 +55,14 @@
     - [X] Graceful parsing of partial and invalid HTML
     - [X] Graceful parsing of junk in headers
     - [X] Strip out whitespace
-    - [X] Limit output to fixed amount
-- [X] Protections
+- [X] General Protections
   - [X] Ignore messages from self
+  - [X] Limit output to fixed amount (both lines and overall size)
+- [X] Clojure eval
+  - [X] Protections
+    - [X] Time limit
+    - [X] Process isolation
+    - [X] Limited Clojure interpreter (SCI)
 
 ## User documentation
 ### Public operations
