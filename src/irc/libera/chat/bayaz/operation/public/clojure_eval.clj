@@ -32,7 +32,7 @@
                  ; We write output to a file, rather than keep it in memory. We can't write enough
                  ; in a couple of seconds to fill the drive and the temp files will be deleted right
                  ; away.
-                 (.redirectErrorStream true)
+                 (.redirectErrorStream false)
                  (.redirectOutput (java.lang.ProcessBuilder$Redirect/appendTo output-file)))
             process (.start pb)
             ; Using time `timeout` above, we shouldn't ever need a timeout here, but
