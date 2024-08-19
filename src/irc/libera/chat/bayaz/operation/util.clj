@@ -22,6 +22,7 @@
                                                (make-prefixes "unban" "ub" "-b")
                                                (make-prefixes "kickban" "kb")
                                                (make-prefixes "kick" "k")
+                                               (make-prefixes "note" "n")
                                                (make-prefixes "history" "h")
                                                (make-prefixes "whois" "who")
                                                (make-prefixes "deepwhois" "dwho")
@@ -37,6 +38,7 @@
                         "quiet" "Quiet"
                         "unquiet" "Unquiet"
                         "warn" "Warn"
+                        "note" "Note"
                         "kick" "Kick"})
 
 (defn message->operation [message]

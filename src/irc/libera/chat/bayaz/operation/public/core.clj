@@ -146,7 +146,7 @@
 (defn process-message! [op]
   (let [channel (.getName (.getChannel (:event op)))
         eval-prefix (get-in @state/global-config [:channels channel :feature/clojure-eval-prefix])]
-    (timbre/debug :eval-prefix eval-prefix :eval-enabled? (state/feature-enabled? channel :clojure-eval) :message (:message op))
+    ;(timbre/debug :eval-prefix eval-prefix :eval-enabled? (state/feature-enabled? channel :clojure-eval) :message (:message op))
     (cond
       (and eval-prefix
            (state/feature-enabled? channel :clojure-eval)

@@ -11,7 +11,8 @@
             "#clojure" {:admins #{"jeaye" "technomancy" "ridcully"}
                         :features #{:admin :bayaz-command :ops-command :title-fetch :clojure-eval}
                         :feature/clojure-eval-prefix ","}
-            ;"#linux" {}
-            ;"#libera" {}
+            "##rust" {}
+            "#linux" {}
+            "#libera" {}
             }
  :gist-token nil}
