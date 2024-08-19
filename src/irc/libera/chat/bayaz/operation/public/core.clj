@@ -17,7 +17,7 @@
   [op]
   (when (state/feature-enabled? (.getName (.getChannel (:event op))) :bayaz-command)
     (.respondWith (:event op)
-                  (str "I'm a Clojure bot. My source is here: https://github.com/libera-programming/bayaz"))))
+                  (str "Leave me be. My source is here: https://github.com/libera-programming/bayaz"))))
 
 (defmethod process! "ops"
   [op]

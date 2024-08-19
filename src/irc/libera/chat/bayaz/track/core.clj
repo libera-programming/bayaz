@@ -54,7 +54,7 @@
         hostname (lower-case hostname)
         account (when (some? account)
                   (lower-case account))
-        _ (timbre/info :track-user :hostname hostname :nick nick :account account)
+        ;_ (timbre/info :track-user :hostname hostname :nick nick :account account)
         hostname-ref (track-hostname! hostname)]
     (track-nick! nick hostname-ref timestamp)
     (when-not (empty? account)
