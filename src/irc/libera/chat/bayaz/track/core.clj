@@ -91,10 +91,11 @@
                                   (order-by [:last_seen :desc])))
       first))
 
-(defn find-latest-account-for-hostname-ref! [hostname-ref]
+(defn find-latest-account-for-hostname-ref! [hostname-ref timestamp]
   (-> (postgres.core/execute! (-> (select :*)
                                   (from :account_association)
-                                  (where [:= :hostname_id hostname-ref])
+                                  (where [:= :hostname_id hostname-ref]
+                                         [:= :last_seen timestamp])
                                   (limit 1)
                                   (order-by [:last_seen :desc])))
       first))
@@ -245,7 +246,10 @@
         ; resolve to the most recent.
         latest-nick (find-latest-nick! who)
         account (when (some? latest-nick)
-                  (find-latest-account-for-hostname-ref! (:hostname_id latest-nick)))]
+                  ; We require the timestamp of the nick and account associations to match.
+                  ; This means the nick and account are being used together.
+                  (find-latest-account-for-hostname-ref! (:hostname_id latest-nick)
+                                                         (:last_seen latest-nick)))]
     (cond
       (some? account)
       (str "$a:" (:account account))
