@@ -25,6 +25,8 @@
     - [X] Store reason
   - [X] Warn
     - [X] Store reason
+  - [X] Note
+    - [X] Store reason
   - [X] Admin history view for each nick
   - [ ] Timers for mode resets
     - [ ] Timers persist across bot restarts
@@ -80,6 +82,7 @@
 | `unquiet` | `uq`,`-q` | `!uq <target> [reason]` | Set mode -q on the target.                        |
 | `ban`     | `b`,`+b`  | `!b <target> [reason]`  | Set mode +b on the target.                        |
 | `unban`   | `ub`,`-b` | `!ub <target> [reason]` | Set mode -b on the target.                        |
+| `note`     | `n`  | `!n <target> [reason]`  | Store a note/reminder in the admin history for the target.                        |
 | `kick`    | `k`       | `!k <nick> [reason]`    | Remove the nick from the channel.                 |
 | `kickban` | `kb`      | `!kb <nick> [reason]`   | Remove the nick from the channel and set mode +b. |
 | `history` | `h`       | `!h <nick>`             | Output the admin history for a nick.              |

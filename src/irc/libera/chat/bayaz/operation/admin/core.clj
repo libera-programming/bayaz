@@ -114,6 +114,14 @@
     (track-operation! channel :admin/kick (:account op) who why)
     (operation.util/kick! channel who)))
 
+(defmethod process! "note"
+  [op]
+  (timbre/debug :note op)
+  (let [[who & why] (:args op)
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+    (track-operation! channel :admin/note (:account op) who why)
+    (.respondWith (:event op) "Noted.")))
+
 (defmethod process! "history"
   [op]
   (let [[who] (:args op)
