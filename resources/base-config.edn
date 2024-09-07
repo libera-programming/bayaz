@@ -13,6 +13,5 @@
                         :feature/clojure-eval-prefix ","}
             "##rust" {}
             "#linux" {}
-            "#libera" {}
             }
  :gist-token nil}
