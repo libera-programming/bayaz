@@ -102,7 +102,7 @@
   [op]
   (let [; TODO: Validate this input.
         [who] (:args op)
-        channel (.getName (.getChannel (:event op)))]
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
     (process! (assoc op :command "ban"))
     (operation.util/kick! channel who)))
 
@@ -110,7 +110,7 @@
   [op]
   (let [; TODO: Validate this input.
         [who & why] (:args op)
-        channel (.getName (.getChannel (:event op)))]
+        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
     (track-operation! channel :admin/kick (:account op) who why)
     (operation.util/kick! channel who)))
 
