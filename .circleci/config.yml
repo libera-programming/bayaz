@@ -46,9 +46,11 @@ jobs:
             - ~/.m2
           key: v1-dependencies-{{ checksum "project.clj" }}
       - run: lein uberjar
+      - run: lein native-image
       - run: |
           ssh-keyscan -H pastespace.org >> ~/.ssh/known_hosts
           scp -o StrictHostKeyChecking=no target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
+          scp -o StrictHostKeyChecking=no target/native-image/bayaz bayaz@pastespace.org:bin/bayaz-$CIRCLE_SHA1
           ssh -o StrictHostKeyChecking=no bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1.jar"
 
 workflows:

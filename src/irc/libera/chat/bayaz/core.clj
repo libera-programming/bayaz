@@ -167,6 +167,7 @@
   (timbre/swap-config! assoc :timestamp-opts {:pattern "yyyy-MM-dd HH:mm:ss"
                                               :locale :jvm-default
                                               :timezone :utc})
+  (timbre/debug :global-config @state/global-config)
   (let [bot-config (-> (Configuration$Builder.)
                        (.setName (:nick @state/global-config))
                        (.setRealName (:real-name @state/global-config))
