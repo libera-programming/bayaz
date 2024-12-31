@@ -9,13 +9,13 @@
             [environ.core :refer [env]]
             [irc.libera.chat.bayaz.state :as state]))
 
-(def config {:host "127.0.0.1"
-             :port 5432
-             :user (:postgres-user @state/global-config (:user env))
-             :password (:postgres-pass @state/global-config "")
-             :database "bayaz"
-             :migrations-table :migrations
-             :migrations-path "migrations"})
+(def config (delay {:host "127.0.0.1"
+                    :port 5432
+                    :user (:postgres-user @state/global-config (:user env))
+                    :password (:postgres-pass @state/global-config "")
+                    :database "bayaz"
+                    :migrations-table :migrations
+                    :migrations-path "migrations"}))
 
 (defonce pool (atom nil))
 
@@ -26,12 +26,12 @@
 
 (defn connect! []
   (disconnect!)
-  (reset! pool (pgp/pool config))
+  (reset! pool (pgp/pool @config))
 
   (let [url (pg.migration.fs/path->url "migrations")]
     (clojure.pprint/pprint (pg.migration.core/url->migrations url)))
 
-  (pgm/migrate-all config))
+  (pgm/migrate-all @config))
 
 (defn query! [honey]
   (timbre/trace :query (sql/format honey {:pretty true}))

@@ -1,7 +1,8 @@
 (ns irc.libera.chat.bayaz.state
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [taoensso.timbre :as timbre]))
 
 (defonce bot (atom nil))
 ; This is a general event queue of sorts, with which system can subscribe to upcoming events.
@@ -14,7 +15,8 @@
     (-> resource
         slurp
         edn/read-string)
-    (catch Exception _
+    (catch Exception e
+      (timbre/error :error-reading-config resource e)
       {})))
 
 ; TODO: Validate and merge with default config.
