@@ -24,7 +24,6 @@ jobs:
       - run: |
           lein cloverage --codecov
           bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
-      - run: lein native-image
   deploy:
     docker:
       - image: circleci/clojure
@@ -47,6 +46,7 @@ jobs:
             - ~/.m2
           key: v1-dependencies-{{ checksum "project.clj" }}
       - run: lein uberjar
+      - run: lein native-image
       - run: |
           ssh-keyscan -H pastespace.org >> ~/.ssh/known_hosts
           scp -o StrictHostKeyChecking=no target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
