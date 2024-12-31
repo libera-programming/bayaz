@@ -38,6 +38,8 @@
                                                   "--no-server"
                                                   "--initialize-at-run-time=org.apache"
                                                   "-H:+StaticExecutableWithDynamicLibC"
+                                                  "-H:ResourceConfigurationFiles=resource-config.json"
+                                                  "--enable-url-protocols=resource"
                                                   "--verbose"
                                                   "--no-fallback"]}}
              :uberjar {:aot :all
