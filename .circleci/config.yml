@@ -30,6 +30,7 @@ jobs:
     working_directory: ~/repo
     environment:
       LEIN_ROOT: "true"
+      GRAALVM_HOME: /home/circleci/repo/.graalvm
 
     steps:
       - add_ssh_keys:
@@ -40,6 +41,14 @@ jobs:
           keys:
             - v1-dependencies-{{ checksum "project.clj" }}
             - v1-dependencies-
+      - run:
+          name: Install GraalVM
+          command: |
+            curl -O -J -L https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-23.0.1/graalvm-community-jdk-23.0.1_linux-x64_bin.tar.gz
+            tar xfz graalvm-community-jdk-23.0.1_linux-x64_bin.tar.gz
+            mv graalvm-community-openjdk-23.0.1+11.1 $GRAALVM_HOME
+            rm graalvm-community-jdk-23.0.1_linux-x64_bin.tar.gz
+      - run: sudo apt-get update && sudo apt-get install -y leiningen build-essential libz-dev
       - run: lein deps
       - save_cache:
           paths:
@@ -50,7 +59,7 @@ jobs:
       - run: |
           ssh-keyscan -H pastespace.org >> ~/.ssh/known_hosts
           scp -o StrictHostKeyChecking=no target/uberjar/bayaz-0.1.0-SNAPSHOT-standalone.jar bayaz@pastespace.org:jar/bayaz-$CIRCLE_SHA1.jar
-          scp -o StrictHostKeyChecking=no target/native-image/bayaz bayaz@pastespace.org:bin/bayaz-$CIRCLE_SHA1
+          scp -o StrictHostKeyChecking=no target/default+native-image/bayaz bayaz@pastespace.org:bin/bayaz-$CIRCLE_SHA1
           ssh -o StrictHostKeyChecking=no bayaz@pastespace.org "./deploy-changes bayaz-$CIRCLE_SHA1.jar"
 
 workflows:
