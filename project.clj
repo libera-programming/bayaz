@@ -17,7 +17,8 @@
                  [environ "1.2.0"]]
   :plugins [[lein-environ "1.2.0"]
             [com.jakemccrary/lein-test-refresh "0.25.0"]
-            [lein-cloverage "1.2.4"]]
+            [lein-cloverage "1.2.4"]
+            [io.taylorwood/lein-native-image "0.3.1"]]
   :main ^:skip-aot irc.libera.chat.bayaz.core
   :global-vars {*warn-on-reflection* true}
   :target-path "target/%s"
@@ -28,5 +29,16 @@
                               "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
                               "-Djdk.attach.allowAttachSelf"]}
              :test {:test-refresh {:focus-flag :focus}}
+             :native-image {:aot :all
+                            :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
+                            :native-image {:name "bayaz"
+                                           ;:graal-bin "/usr/lib/jvm/java-19-graalvm/bin"
+                                           :opts ["--report-unsupported-elements-at-runtime"
+                                                  "--initialize-at-build-time"
+                                                  "--no-server"
+                                                  "--initialize-at-run-time=org.apache"
+                                                  "-H:+StaticExecutableWithDynamicLibC"
+                                                  "--verbose"
+                                                  "--no-fallback"]}}
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})
