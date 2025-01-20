@@ -15,7 +15,7 @@
                     :password (:postgres-pass @state/global-config "")
                     :database "bayaz"
                     :migrations-table :migrations
-                    :migrations-path "migrations"}))
+                    :migrations-path "resources/migrations"}))
 
 (defonce pool (atom nil))
 
@@ -28,7 +28,7 @@
   (disconnect!)
   (reset! pool (pgp/pool @config))
 
-  (let [url (pg.migration.fs/path->url "migrations")]
+  (let [url (pg.migration.fs/path->url (:migrations-path @config))]
     (clojure.pprint/pprint (pg.migration.core/url->migrations url)))
 
   (pgm/migrate-all @config))

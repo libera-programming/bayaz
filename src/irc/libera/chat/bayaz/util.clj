@@ -1,6 +1,7 @@
 (ns irc.libera.chat.bayaz.util
   (:require [clojure.string])
-  (:import [java.io InputStream ByteArrayOutputStream]))
+  (:import [java.io InputStream ByteArrayOutputStream]
+           [org.pircbotx.hooks.types GenericChannelEvent]))
 
 (def max-message-length 256)
 (defn truncate [text max-length]
@@ -101,3 +102,8 @@
       (clojure.string/join " " (conj parts (if future?
                                              "from now"
                                              "ago"))))))
+
+(defn event->channel [event]
+  (if (instance? GenericChannelEvent event)
+    (.getName (.getChannel ^GenericChannelEvent event))
+    "bayaz"))

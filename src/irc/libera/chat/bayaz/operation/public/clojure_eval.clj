@@ -1,17 +1,18 @@
 (ns irc.libera.chat.bayaz.operation.public.clojure-eval
   (:require [clojure.string :as string]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre])
+  (:import [java.nio.file Files Path]))
 
 (def default-timeout-s 2)
 (def max-output-lines 10)
 (def code-prefix "(use 'clojure.repl) (println (pr-str (do %s)))")
 
-(defn temp-file! []
-  (java.nio.file.Files/createTempFile (str (java.util.UUID/randomUUID))
-                                      (str (java.util.UUID/randomUUID))
-                                      (make-array java.nio.file.attribute.FileAttribute 0)))
+(defn temp-file! ^Path []
+  (Files/createTempFile (str (java.util.UUID/randomUUID))
+                        (str (java.util.UUID/randomUUID))
+                        (make-array java.nio.file.attribute.FileAttribute 0)))
 
-(defn eval [code]
+(defn run [code]
   (let [source-file (.toFile (temp-file!))
         output-file (.toFile (temp-file!))]
     (try
@@ -28,7 +29,7 @@
                  ; It'll set the exit code to 124 if the command times out.
                  (format "timeout %ds bb %s" default-timeout-s source-file)]
             pb (doto
-                 (java.lang.ProcessBuilder. (into-array ^String cmd))
+                 (java.lang.ProcessBuilder. ^"[Ljava.lang.String;" (into-array ^String cmd))
                  ; We write output to a file, rather than keep it in memory. We can't write enough
                  ; in a couple of seconds to fill the drive and the temp files will be deleted right
                  ; away.
@@ -65,5 +66,5 @@
 
 (comment
 
-  (println (eval "(str 1 2)"))
-  (println (eval "\") (println 42) (do \"1")))
+  (println (run "(str 1 2)"))
+  (println (run "\") (println 42) (do \"1")))

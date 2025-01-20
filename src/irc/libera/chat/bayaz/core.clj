@@ -15,8 +15,9 @@
            [org.pircbotx.cap SASLCapHandler EnableCapHandler]
            [org.pircbotx.delay StaticDelay]
            [org.pircbotx.hooks ListenerAdapter]
-           [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent WhoisEvent
-            BanListEvent QuietListEvent JoinEvent PartEvent QuitEvent
+           [org.pircbotx.hooks.types GenericMessageEvent]
+           [org.pircbotx.hooks.events MessageEvent PrivateMessageEvent
+            WhoisEvent BanListEvent QuietListEvent JoinEvent PartEvent QuitEvent
             ServerResponseEvent NickChangeEvent]))
 
 (defn track-with-tags! [nick hostname tags timestamp]
@@ -26,17 +27,17 @@
                                                    :hostname hostname})
                                       timestamp))))
 
-(defn process-message! [^User user message message-type event]
+(defn process-message! [^User user message message-type ^GenericMessageEvent event]
   (try
-    (let [account (-> event .getTags util/java-tags->clj-tags :account)]
+    (let [account (-> event .getV3Tags util/java-tags->clj-tags :account)]
       (track-with-tags! (.getNick user)
                         (-> event .getUserHostmask .getHostname)
-                        (-> event .getTags util/java-tags->clj-tags)
+                        (-> event .getV3Tags util/java-tags->clj-tags)
                         (.getTimestamp event))
 
       ; TODO: Test this check.
       (when-not (= (.getUserBot ^PircBotX @state/bot) user)
-        (let [channel (.getName (.getChannel event))
+        (let [channel (util/event->channel event)
               from-admin? (state/admin? channel account)
               operation (-> (operation.util/message->operation message)
                             (assoc :type message-type
@@ -68,26 +69,25 @@
 
 (defn process-ban-list! [^BanListEvent event]
   (timbre/info :ban-list (.getEntries event))
-  (when-some [pending (get-in @state/pending-event-requests [:ban-list (.getName (.getChannel event))])]
-    (swap! state/pending-event-requests dissoc-in [:ban-list (.getName (.getChannel event))])
+  (when-some [pending (get-in @state/pending-event-requests [:ban-list (util/event->channel event)])]
+    (swap! state/pending-event-requests dissoc-in [:ban-list (util/event->channel event)])
     (deliver pending event)))
 
 (defn process-quiet-list! [^QuietListEvent event]
   (timbre/info :quiet-list (.getEntries event))
-  ; TODO: Check this event usage; it's using clj keywords.
-  (when-some [pending (get-in @state/pending-event-requests [:quiet-list (:channel-name event)])]
-    (swap! state/pending-event-requests dissoc-in [:quiet-list (:channel-name event)])
+  (when-some [pending (get-in @state/pending-event-requests [:quiet-list (util/event->channel event)])]
+    (swap! state/pending-event-requests dissoc-in [:quiet-list (util/event->channel event)])
     (deliver pending event)))
 
 (defn process-join! [^JoinEvent event]
-  (let [channel-name (-> event .getChannel .getName)
+  (let [channel-name (util/event->channel event)
         user (.getUser event)]
     (timbre/info :join :channel channel-name :nick (.getNick user))
 
     ; If we're joining a channel, send a WHOX to learn about every user in the channel. We only
     ; request for the useful info for tracking: hostname, nick, and account.
     (if (= (.getUserBot ^PircBotX @state/bot) user)
-      (-> @state/bot
+      (-> ^PircBotX @state/bot
           .sendRaw
           (.rawLine (str "WHO " (-> event .getChannel .getName) " %hna")))
       ; Some other user joining.
@@ -104,7 +104,7 @@
                     (.getTimestamp event)))
 
 (defn process-quit! [^QuitEvent event]
-  (timbre/info :quit :channel (-> event .getChannel .getName) :nick (-> event .getUser .getNick))
+  (timbre/info :quit :nick (-> event .getUser .getNick))
   (track-with-tags! (-> event .getUser .getNick)
                     (-> event .getUserHostmask .getHostname)
                     (-> event .getTags util/java-tags->clj-tags)
@@ -113,10 +113,9 @@
 ; TODO: This is never being triggered.
 (defn process-nick-change! [^NickChangeEvent event]
   (timbre/info :nick-change
-         :channel (-> event .getChannel .getName)
-         :old-nick (-> event .getUser .getOldNick)
-         :new-nick (-> event .getUser .getNewNick))
-  (track-with-tags! (-> event .getUser .getNewNick)
+               :old-nick (-> event .getOldNick)
+               :new-nick (-> event .getNewNick))
+  (track-with-tags! (-> event .getNewNick)
                     (-> event .getUserHostmask .getHostname)
                     (-> event .getTags util/java-tags->clj-tags)
                     (.getTimestamp event)))
@@ -125,7 +124,7 @@
 
 (defn process-server-response! [^ServerResponseEvent event]
   #_(locking lock
-    (println "raw" (.getCode event) (.getRawLine event)))
+    (timbre/debug "raw" (.getCode event) (.getRawLine event)))
   (case (.getCode event)
     ; :molybdenum.libera.chat 354 client hostname nick account
     354

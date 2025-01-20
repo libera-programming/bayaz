@@ -3,15 +3,15 @@
             [clojure.data.json :as json]
             [clj-http.client :as http]
             [taoensso.timbre :as timbre]
-            [honey.sql :as sql]
-            [honey.sql.helpers :refer [select from where limit order-by join
-                                       insert-into values on-conflict do-update-set returning]]
+            [honey.sql.helpers :refer [select from where order-by
+                                       insert-into values]]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.postgres.core :as postgres.core]
             [irc.libera.chat.bayaz.util :as util]
             [irc.libera.chat.bayaz.operation.util :as operation.util]
             [irc.libera.chat.bayaz.track.core :as track.core])
-  (:import [org.pircbotx PircBotX UserChannelDao]))
+  (:import [org.pircbotx PircBotX UserChannelDao]
+           [org.pircbotx.hooks.types GenericMessageEvent]))
 
 (defn track-operation! [channel action admin-account who why]
   (let [who (clojure.string/lower-case who)
@@ -49,9 +49,9 @@
   [op]
   (let [[who & why] (:args op)
         ^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
-    (if-not (.containsUser user-channel-dao who)
-      (.respond (:event op) "Warn syntax is: !w <nick> [reason]")
+        channel (state/target-channel-for-channel (util/event->channel (:even op)))]
+    (if-not (.containsUser user-channel-dao ^String who)
+      (.respond ^GenericMessageEvent (:event op) "Warn syntax is: !w <nick> [reason]")
       (do
         (track-operation! channel :admin/warn (:account op) who why)
         (operation.util/message! channel
@@ -61,7 +61,7 @@
 (defmethod process! "warnall"
   [op]
   (let [[& why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (operation.util/message! channel
                              (str "Everyone, this is a warning. " (when-not (empty? why)
                                                                     (string/join " " why))))))
@@ -70,7 +70,7 @@
   [op]
   (timbre/debug :quiet op)
   (let [[who & why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (track-operation! channel :admin/quiet (:account op) who why)
     (operation.util/set-user-mode! channel "+q" who)))
 
@@ -78,7 +78,7 @@
   [op]
   (let [; TODO: Validate
         [who & why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (track-operation! channel :admin/unquiet (:account op) who why)
     (operation.util/set-user-mode! channel "-q" who)))
 
@@ -86,7 +86,7 @@
   [op]
   (let [; TODO: Validate this input.
         [who & why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (track-operation! channel :admin/ban (:account op) who why)
     (operation.util/set-user-mode! channel "-q+b" who who)))
 
@@ -94,7 +94,7 @@
   [op]
   (let [; TODO: Validate
         [who & why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (track-operation! channel :admin/unban (:account op) who why)
     (operation.util/set-user-mode! channel "-b" who)))
 
@@ -102,7 +102,7 @@
   [op]
   (let [; TODO: Validate this input.
         [who] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (process! (assoc op :command "ban"))
     (operation.util/kick! channel who)))
 
@@ -110,7 +110,7 @@
   [op]
   (let [; TODO: Validate this input.
         [who & why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (track-operation! channel :admin/kick (:account op) who why)
     (operation.util/kick! channel who)))
 
@@ -118,16 +118,16 @@
   [op]
   (timbre/debug :note op)
   (let [[who & why] (:args op)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (track-operation! channel :admin/note (:account op) who why)
-    (.respondWith (:event op) "Noted.")))
+    (.respondWith ^GenericMessageEvent (:event op) "Noted.")))
 
 (defmethod process! "history"
   [op]
   (let [[who] (:args op)
         who (clojure.string/lower-case who)
         [hostname-ref hostname] (track.core/resolve-hostname! who)
-        channel (state/target-channel-for-channel (.getName (.getChannel (:event op))))
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))
         actions (find-admin-actions-for-hostname-ref! channel hostname-ref)
         now (System/currentTimeMillis)
         response (->> (take max-history-lines actions)
@@ -147,7 +147,7 @@
                       " action(s) going back to "
                       (util/relative-time-offset now (-> remaining-actions last :seen))
                       "."))]
-    (.respondWith (:event op)
+    (.respondWith ^GenericMessageEvent (:event op)
                   (str (if (empty? actions)
                          "No admin operation history for "
                          "Admin operation history for ")
@@ -155,9 +155,9 @@
                        (when-not (or (= who hostname) (track.core/hostmask? who))
                          (str " (latest hostname " hostname ")"))))
     (doseq [r response]
-      (.respondWith (:event op) r))
+      (.respondWith ^GenericMessageEvent (:event op) r))
     (when (some? footer)
-      (.respondWith (:event op) footer))))
+      (.respondWith ^GenericMessageEvent (:event op) footer))))
 
 (defmethod process! "whois"
   [op]
@@ -188,7 +188,7 @@
                       " going back to "
                       (util/relative-time-offset now (-> remaining last :last_seen))
                       "."))]
-    (.respondWith (:event op)
+    (.respondWith ^GenericMessageEvent (:event op)
                   (str (if (empty? associations)
                          "No tracking history for "
                          "Recent nicks and accounts on current hostname ")
@@ -197,14 +197,14 @@
                                   (not (or (= who hostname) (track.core/hostmask? who))))
                          (str " (hostname " hostname ")"))))
     (doseq [r response]
-      (.respondWith (:event op) r))
+      (.respondWith ^GenericMessageEvent (:event op) r))
     (when (some? footer)
-      (.respondWith (:event op) footer))))
+      (.respondWith ^GenericMessageEvent (:event op) footer))))
 
 (defmethod process! "deepwhois"
   [op]
   (let [[who] (:args op)
-        _ (.respondWith (:event op) (str "Running deep whois on " who ". This can take a while..."))
+        _ (.respondWith ^GenericMessageEvent (:event op) (str "Running deep whois on " who ". This can take a while..."))
         results (track.core/deep-whois! who)
         now (System/currentTimeMillis)
         response (->> results
@@ -233,9 +233,9 @@
         gist-result (http/post "https://api.github.com/gists" http-opts)
         error? (not= 201 (:status gist-result))]
     (if error?
-      (.respondWith (:event op) (str "Unable to upload gist: " (:body gist-result)))
+      (.respondWith ^GenericMessageEvent (:event op) (str "Unable to upload gist: " (:body gist-result)))
       (let [body (json/read-str (:body gist-result))]
-        (.respondWith (:event op) (str "Results for deep whois on " who ": "
+        (.respondWith ^GenericMessageEvent (:event op) (str "Results for deep whois on " who ": "
                                        (get body "html_url")))))))
 
 (defmethod process! :default

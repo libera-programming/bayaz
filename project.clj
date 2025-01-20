@@ -8,11 +8,10 @@
                  [com.github.pircbotx/pircbotx "2.3.1"]
                  [com.taoensso/timbre "6.6.1"]
                  [clj-http "3.13.0"]
-                 ; HTML parsing for URL lookup.
-                 [reaver "0.1.3"]
-                 [com.github.igrishaev/pg2-core "0.1.27"]
-                 [com.github.igrishaev/pg2-honey "0.1.27"]
-                 [com.github.igrishaev/pg2-migration "0.1.27"]
+                 [org.jsoup/jsoup "1.18.3"]
+                 [com.github.igrishaev/pg2-core "0.1.30"]
+                 [com.github.igrishaev/pg2-honey "0.1.30"]
+                 [com.github.igrishaev/pg2-migration "0.1.30"]
                  [dev.weavejester/medley "1.8.1"]
                  [environ "1.2.0"]]
   :plugins [[lein-environ "1.2.0"]
@@ -22,6 +21,7 @@
   :main ^:skip-aot irc.libera.chat.bayaz.core
   :global-vars {*warn-on-reflection* true}
   :target-path "target/%s"
+  :source-paths ["src" "third-party/reaver/src"]
   :profiles {:dev {:dependencies [[nubank/matcher-combinators "3.9.1"]
                                   [com.clojure-goes-fast/clj-async-profiler "1.5.1"]]
                    :env {:bayaz-db "dev-resources/db"}
@@ -39,8 +39,13 @@
                                                   "--initialize-at-run-time=org.apache"
                                                   "-H:+StaticExecutableWithDynamicLibC"
                                                   "-H:ResourceConfigurationFiles=resource-config.json"
-                                                  "--enable-url-protocols=resource"
+                                                  "-H:ReflectionConfigurationFiles=reflection.json"
+                                                  "--enable-url-protocols=http,https"
+                                                  "--enable-http"
+                                                  "--enable-https"
+                                                  "--enable-all-security-services"
                                                   "--verbose"
                                                   "--no-fallback"]}}
              :uberjar {:aot :all
+                       :global-vars {*warn-on-reflection* true}
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})

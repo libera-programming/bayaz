@@ -7,7 +7,9 @@
             [reaver]
             [irc.libera.chat.bayaz.operation.public.clojure-eval :as public.clojure-eval]
             [irc.libera.chat.bayaz.state :as state]
-            [irc.libera.chat.bayaz.util :as util]))
+            [irc.libera.chat.bayaz.util :as util])
+  (:import [java.io InputStream]
+           [org.pircbotx.hooks.types GenericMessageEvent]))
 
 (defmulti process!
   (fn [op]
@@ -15,19 +17,19 @@
 
 (defmethod process! "bayaz"
   [op]
-  (when (state/feature-enabled? (.getName (.getChannel (:event op))) :bayaz-command)
-    (.respondWith (:event op)
+  (when (state/feature-enabled? (util/event->channel (:event op)) :bayaz-command)
+    (.respondWith ^GenericMessageEvent (:event op)
                   (str "Leave me be. My source is here: https://github.com/libera-programming/bayaz"))))
 
 (defmethod process! "ops"
   [op]
-  (when (state/feature-enabled? (.getName (.getChannel (:event op))) :ops-command)
-    (let [channel (.getName (.getChannel (:event op)))
+  (when (state/feature-enabled? (util/event->channel (:event op)) :ops-command)
+    (let [channel (util/event->channel (:event op))
           target-channel (state/target-channel-for-channel channel)
           admins (get-in @state/global-config [:channels target-channel :admins])]
       (if (empty? admins)
-        (.respondWith (:event op) (str "I have no admins here."))
-        (.respondWith (:event op) (str "Admins are: " (string/join ", " admins)))))))
+        (.respondWith ^GenericMessageEvent (:event op) (str "I have no admins here."))
+        (.respondWith ^GenericMessageEvent (:event op) (str "Admins are: " (string/join ", " admins)))))))
 
 (defmethod process! :default
   [_op]
@@ -48,7 +50,6 @@
 (defn fetch-youtube-url!* [url]
   (let [oembed-url (format "https://www.youtube.com/oembed?url=%s" url)
         res (http/get oembed-url (assoc http-opts :accept :json))]
-    (timbre/debug :fetch-youtube-url res)
     (when (= 200 (:status res))
       (let [json-body (-> res :body json/read-str)]
         {:title (get json-body "title")}))))
@@ -82,31 +83,28 @@
   (let [domain (util/url->domain url)]
     (if (contains? youtube-domains domain)
       (fetch-youtube-url!* url)
-      (let [; TODO: Can we remove the HEAD altogether and just use a GET?
-            head (http/head url http-opts)
-            head-status (get head :status 404)
-            html? (some #(string/includes? (get-in head [:headers "content-type"] "") %)
+      (let [response (http/get url (assoc http-opts :as :stream))
+            status (get response :status 404)
+            html? (some #(string/includes? (get-in response [:headers "content-type"] "") %)
                         ["text/html" "application/xhtml+xml"])
-            redirects (:trace-redirects head)]
+            redirects (:trace-redirects response)]
         (cond
-          (not= 200 head-status)
+          (not= 200 status)
           nil
 
           (not html?)
           (let [last-domain (util/url->domain (or (last redirects) url))]
-            (merge {:status head-status
-                    :content-type (get-in head [:headers "content-type"])}
+            (merge {:status status
+                    :content-type (get-in response [:headers "content-type"])}
                    (when-not (= domain last-domain)
                      {:domain last-domain})
-                   (let [length (util/parse-int (get-in head [:headers "content-length"]) 0)]
+                   (let [length (util/parse-int (get-in response [:headers "content-length"]) 0)]
                      (when-not (zero? length)
                        {:content-length length}))))
 
           :else
           (try
-            (let [response (http/get url (assoc http-opts :as :stream))
-                  ; TODO: We could check the status and content-type again here.
-                  parsed-html (with-open [body-stream (:body response)]
+            (let [parsed-html (with-open [body-stream ^InputStream (:body response)]
                                 (-> body-stream
                                     (util/read-stream-str! max-content-size)
                                     reaver/parse))
@@ -122,7 +120,11 @@
                  :title (if (seq? title)
                           (first title)
                           title)}))
-            (catch Exception _
+            (catch Exception e
+              (timbre/warn :error-fetching-url
+                           {:url url
+                            :response response}
+                           e)
               nil)))))))
 (def fetch-url! (memo/ttl fetch-url!* {} :ttl/threshold (* 60 1000))); ms
 
@@ -144,21 +146,21 @@
       (util/truncate util/max-message-length)))
 
 (defn process-message! [op]
-  (let [channel (.getName (.getChannel (:event op)))
+  (let [channel (util/event->channel (:event op))
         eval-prefix (get-in @state/global-config [:channels channel :feature/clojure-eval-prefix])]
     ;(timbre/debug :eval-prefix eval-prefix :eval-enabled? (state/feature-enabled? channel :clojure-eval) :message (:message op))
     (cond
       (and eval-prefix
            (state/feature-enabled? channel :clojure-eval)
            (string/starts-with? (:message op) eval-prefix))
-      (let [result (public.clojure-eval/eval (subs (:message op) (count eval-prefix)))]
-        (.respondWith (:event op) (util/truncate result util/max-message-length)))
+      (let [result (public.clojure-eval/run (subs (:message op) (count eval-prefix)))]
+        (.respondWith ^GenericMessageEvent (:event op) (util/truncate result util/max-message-length)))
 
-      (state/feature-enabled? (.getName (.getChannel (:event op))) :title-fetch)
+      (state/feature-enabled? (util/event->channel (:event op)) :title-fetch)
       (let [urls (->> (:parts op)
                       (filter (fn [s]
                                 (re-matches #"https?://\S+" s))))
-            infos (mapv #(future (fetch-url! %)) urls)]
+            infos (mapv #(do (fetch-url! %)) urls)]
         (doseq [info infos]
-          (when-some [info @info]
-            (.respondWith (:event op) (url-info->message info))))))))
+          (when-some [info info]
+            (.respondWith ^GenericMessageEvent (:event op) (url-info->message info))))))))

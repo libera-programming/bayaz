@@ -1,0 +1,3 @@
+[submodule "third-party/reaver"]
+	path = third-party/reaver
+	url = https://github.com/mischov/reaver.git
