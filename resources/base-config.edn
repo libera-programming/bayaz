@@ -11,6 +11,9 @@
             "#clojure" {:admins #{"jeaye" "technomancy" "ridcully"}
                         :features #{:admin :bayaz-command :ops-command :title-fetch :clojure-eval}
                         :feature/clojure-eval-prefix ","}
+            "#jank" {:admins #{"jeaye"}
+                     :features #{:admin :bayaz-command :ops-command :title-fetch :clojure-eval}
+                     :feature/clojure-eval-prefix ","}
             "##rust" {}
             "#linux" {}
             }
