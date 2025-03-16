@@ -86,6 +86,7 @@
 | `kick`    | `k`       | `!k <nick> [reason]`    | Remove the nick from the channel.                 |
 | `kickban` | `kb`      | `!kb <nick> [reason]`   | Remove the nick from the channel and set mode +b. |
 | `history` | `h`       | `!h <nick>`             | Output the admin history for a nick.              |
+| `deephistory` | `dh`       | `!dh <nick>`             | Fetch all related hostnames for target and all history admin associated with them.              |
 | `whois` | `who`       | `!who <target>`             | Fetch all nicks and accounts used by the latest hostname for the target.              |
 | `deepwhois` | `dwho`       | `!dwho <target>`             | Fetch all nicks, accounts, and hostnames related to the target. Results go to a gist.              |
 

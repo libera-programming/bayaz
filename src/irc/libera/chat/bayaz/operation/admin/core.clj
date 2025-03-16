@@ -1,7 +1,6 @@
 (ns irc.libera.chat.bayaz.operation.admin.core
   (:require [clojure.string :as string]
             [clojure.data.json :as json]
-            [clj-http.client :as http]
             [taoensso.timbre :as timbre]
             [honey.sql.helpers :refer [select from where order-by
                                        insert-into values]]
@@ -159,6 +158,49 @@
     (when (some? footer)
       (.respondWith ^GenericMessageEvent (:event op) footer))))
 
+(defmethod process! "deephistory"
+  [op]
+  (let [[who] (:args op)
+        who (clojure.string/lower-case who)
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))
+        associations (track.core/deep-whois! who)
+        actions (loop [associations associations
+                       seen-hostname? #{}
+                       actions []]
+                  (let [association (first associations)]
+                    (cond
+                      (empty? associations)
+                      (sort-by :seen > actions)
+
+                      (seen-hostname? (:hostname_id association))
+                      (recur (rest associations) seen-hostname? actions)
+
+                      :else
+                      (recur (rest associations)
+                             (conj seen-hostname? (:hostname_id association))
+                             (into actions (map #(assoc % :hostname (:hostname association))
+                                                (find-admin-actions-for-hostname-ref! channel
+                                                                                      (:hostname_id association))))))))
+        now (System/currentTimeMillis)
+        lines (->> actions
+                   (map (fn [action]
+                          (str "|" (util/relative-time-offset now (:seen action))
+                               "|`" (:hostname action) "`"
+                               "|" (-> action :action operation.util/admin-action->str)
+                               " from " "`" (:admin_account action) "`"
+                               "|" (:reason action)
+                               "|"))))
+        markdown (str "|When|Who|Action|Reason|\n"
+                      "|---|---|---|---|\n"
+                      (clojure.string/join "\n" lines))
+        gist-result (operation.util/upload-gist! (str "!deephistory " who) markdown)
+        error? (not= 201 (:status gist-result))]
+    (if error?
+      (.respondWith ^GenericMessageEvent (:event op) (str "Unable to upload gist: " (:body gist-result)))
+      (let [body (json/read-str (:body gist-result))]
+        (.respondWith ^GenericMessageEvent (:event op)
+                      (str "Results for deep history on " who ": " (get body "html_url")))))))
+
 (defmethod process! "whois"
   [op]
   (let [[who] (:args op)
@@ -218,25 +260,13 @@
         markdown (str "|Hostname|Nick|Account|First Time|Last Time|\n"
                       "|---|---|---|---|---|\n"
                       (clojure.string/join "\n" response))
-        http-opts {:throw-exceptions false
-                   :ignore-unknown-host? true
-                   :max-redirects 5
-                   :redirect-strategy :graceful
-                   :socket-timeout 20000
-                   :connection-timeout 2000
-                   :accept :json
-                   :headers {"X-GitHub-Api-Version" "2022-11-28"
-                             "Authorization" (str "Bearer " (:gitlab-token @state/global-config))}
-                   :body (json/write-str {:public false
-                                          :description (str "!deepwhois " who)
-                                          :files {"deepwhois.md" {:content markdown}}})}
-        gist-result (http/post "https://api.github.com/gists" http-opts)
+        gist-result (operation.util/upload-gist! (str "!deepwhois " who) markdown)
         error? (not= 201 (:status gist-result))]
     (if error?
       (.respondWith ^GenericMessageEvent (:event op) (str "Unable to upload gist: " (:body gist-result)))
       (let [body (json/read-str (:body gist-result))]
-        (.respondWith ^GenericMessageEvent (:event op) (str "Results for deep whois on " who ": "
-                                       (get body "html_url")))))))
+        (.respondWith ^GenericMessageEvent (:event op)
+                      (str "Results for deep whois on " who ": " (get body "html_url")))))))
 
 (defmethod process! :default
   [_op]

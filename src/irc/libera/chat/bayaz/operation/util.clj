@@ -1,6 +1,8 @@
 (ns irc.libera.chat.bayaz.operation.util
   (:require [clojure.string :as string]
             [clojure.core.async :as async]
+            [clojure.data.json :as json]
+            [clj-http.client :as http]
             [taoensso.timbre :as timbre]
             [irc.libera.chat.bayaz.state :as state]
             [irc.libera.chat.bayaz.track.core :as track.core])
@@ -24,6 +26,7 @@
                                                (make-prefixes "kick" "k")
                                                (make-prefixes "note" "n")
                                                (make-prefixes "history" "h")
+                                               (make-prefixes "deephistory" "dh")
                                                (make-prefixes "whois" "who")
                                                (make-prefixes "deepwhois" "dwho")
 
@@ -132,3 +135,19 @@
     (when-some [user (.getUser user-channel-dao who)]
       (-> (.send channel)
           (.kick user)))))
+
+(defn upload-gist!
+  [description data]
+  (let [http-opts {:throw-exceptions false
+                   :ignore-unknown-host? true
+                   :max-redirects 5
+                   :redirect-strategy :graceful
+                   :socket-timeout 20000
+                   :connection-timeout 2000
+                   :accept :json
+                   :headers {"X-GitHub-Api-Version" "2022-11-28"
+                             "Authorization" (str "Bearer " (:gitlab-token @state/global-config))}
+                   :body (json/write-str {:public false
+                                          :description description
+                                          :files {"deepwhois.md" {:content data}}})}]
+    (http/post "https://api.github.com/gists" http-opts)))

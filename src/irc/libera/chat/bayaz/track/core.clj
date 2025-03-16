@@ -299,27 +299,27 @@
   [(:id row) (:hostname row)])
 
 (defn deep-whois! [who]
-  (-> (loop [remaining-hostname-pairs #{(resolve-hostname! (lower-case who))}
-             seen-hostname-pairs #{}
-             results []]
-        (if (empty? remaining-hostname-pairs)
-          results
-          (let [[hostname-ref hostname :as pair] (first remaining-hostname-pairs)
-                nicks (find-all-nicks-by-hostname-ref! hostname-ref)
-                accounts (find-all-accounts-by-hostname-ref! hostname-ref)
-                seen-hostname-pairs (conj seen-hostname-pairs pair)]
-            (recur (-> (disj remaining-hostname-pairs pair)
-                       (into (map row->seen*)
-                             (find-all-hostnames-by-nicks-and-accounts! (map :nick nicks)
-                                                                        (map #(str "$a:" (:account %))
-                                                                             accounts)))
-                       (difference seen-hostname-pairs))
-                   seen-hostname-pairs
-                   (into results
-                         (map #(assoc % :hostname hostname))
-                         (lazy-cat nicks accounts))))))
-      collapse-whois-results
-      (sort-by :last_seen >)))
+  (->> (loop [remaining-hostname-pairs #{(resolve-hostname! (lower-case who))}
+              seen-hostname-pairs #{}
+              results []]
+         (if (empty? remaining-hostname-pairs)
+           results
+           (let [[hostname-ref hostname :as pair] (first remaining-hostname-pairs)
+                 nicks (find-all-nicks-by-hostname-ref! hostname-ref)
+                 accounts (find-all-accounts-by-hostname-ref! hostname-ref)
+                 seen-hostname-pairs (conj seen-hostname-pairs pair)]
+             (recur (-> (disj remaining-hostname-pairs pair)
+                        (into (map row->seen*)
+                              (find-all-hostnames-by-nicks-and-accounts! (map :nick nicks)
+                                                                         (map #(str "$a:" (:account %))
+                                                                              accounts)))
+                        (difference seen-hostname-pairs))
+                    seen-hostname-pairs
+                    (into results
+                          (map #(assoc % :hostname hostname))
+                          (lazy-cat nicks accounts))))))
+       collapse-whois-results
+       (sort-by :last_seen >)))
 
 (comment
   *e
