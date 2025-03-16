@@ -298,7 +298,6 @@
 (defn row->seen* [row]
   [(:id row) (:hostname row)])
 
-; TODO: Sort by last-seen
 (defn deep-whois! [who]
   (-> (loop [remaining-hostname-pairs #{(resolve-hostname! (lower-case who))}
              seen-hostname-pairs #{}
@@ -319,7 +318,8 @@
                    (into results
                          (map #(assoc % :hostname hostname))
                          (lazy-cat nicks accounts))))))
-      collapse-whois-results))
+      collapse-whois-results
+      (sort-by :last_seen >)))
 
 (comment
   *e
