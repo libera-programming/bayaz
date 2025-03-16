@@ -49,7 +49,7 @@
   [op]
   (let [[who & why] (:args op)
         ^UserChannelDao user-channel-dao (.getUserChannelDao ^PircBotX @state/bot)
-        channel (state/target-channel-for-channel (util/event->channel (:even op)))]
+        channel (state/target-channel-for-channel (util/event->channel (:event op)))]
     (if-not (.containsUser user-channel-dao ^String who)
       (.respond ^GenericMessageEvent (:event op) "Warn syntax is: !w <nick> [reason]")
       (do

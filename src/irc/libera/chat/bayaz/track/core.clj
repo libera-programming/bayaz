@@ -298,6 +298,7 @@
 (defn row->seen* [row]
   [(:id row) (:hostname row)])
 
+; TODO: Sort by last-seen
 (defn deep-whois! [who]
   (-> (loop [remaining-hostname-pairs #{(resolve-hostname! (lower-case who))}
              seen-hostname-pairs #{}
