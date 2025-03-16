@@ -209,9 +209,9 @@
         now (System/currentTimeMillis)
         response (->> results
                       (map (fn [association]
-                             (str "|" (:hostname association)
-                                  "|" (:nick association)
-                                  "|" (:account association)
+                             (str "|`" (:hostname association) "`"
+                                  "|`" (:nick association) "`"
+                                  "|`" (:account association) "`"
                                   "|" (util/relative-time-offset now (:first_seen association))
                                   "|" (util/relative-time-offset now (:last_seen association))
                                   "|"))))
